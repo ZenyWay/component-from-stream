@@ -82,10 +82,10 @@ export type ComponentFromStreamFactory<N={},C={}> = <P={},Q={}>(
 ) => ComponentFromStreamConstructor<N, C, P, Q>
 
 export interface ComponentFromStreamConstructor<N={},C={},P={},Q={}> {
-	new (props: P, context?: any): C & ComponentFromStream<N,P,Q>
-	lift <R>(
-		fromOwnProps: (props: Observable<R>) => Observable<P>
-	): ComponentFromStreamConstructor<N,C,R,Q>
+  new (props: P, context?: any): C & ComponentFromStream<N,P,Q>
+  lift <R>(
+    fromOwnProps: (props: Observable<R>) => Observable<P>
+  ): ComponentFromStreamConstructor<N,C,R,Q>
 }
 
 export interface ComponentFromStream<N={},P={},Q={}>
@@ -97,7 +97,7 @@ extends Component<N,P,{props?:Q}> {
 }
 
 export interface ComponentConstructor<N={},P={}> {
-	new (props: P, context?: any): Component<N,{},{}>
+  new (props: P, context?: any): Component<N,{},{}>
 }
 
 export interface Component<N={},P={},S={}> {
@@ -114,61 +114,61 @@ export default function createComponentFromStreamFactory <N={},C={}>(
   fromESObservable: <T>(stream: Observable<T>) => Observable<T>,
   toESObservable: <T>(stream: Observable<T>) => Observable<T> = identity
 ): ComponentFromStreamFactory<N,C> {
-	return function createComponentFromStream <P={},Q={}>(
+  return function createComponentFromStream <P={},Q={}>(
     render: (props: Q) => N,
     mapProps: Operator<P,Q> = identity as any
   ): ComponentFromStreamConstructor<N,C,P,Q> {
-		return class ComponentFromStreamClass
-		extends (ComponentCtor as ComponentConstructor<N,P>) // base class cannot be generic
-		implements ComponentFromStream<N,P,Q> {
-			static lift <R>(op: Operator<R,P>): ComponentFromStreamConstructor<N, C, R, Q>
-			static lift <R>(...ops: Operator<any,any>[]) {
-				return createComponentFromStream<R,Q>(render, combine(mapProps, ...ops))
+    return class ComponentFromStreamClass
+    extends (ComponentCtor as ComponentConstructor<N,P>) // base class cannot be generic
+    implements ComponentFromStream<N,P,Q> {
+      static lift <R>(op: Operator<R,P>): ComponentFromStreamConstructor<N, C, R, Q>
+      static lift <R>(...ops: Operator<any,any>[]) {
+        return createComponentFromStream<R,Q>(render, combine(mapProps, ...ops))
       }
 
-			state: Readonly<{ props?: Q }> = {}
+      state: Readonly<{ props?: Q }> = {}
 
       props: Readonly<P>
 
-			props$ = createSubject<Readonly<P>>()
+      props$ = createSubject<Readonly<P>>()
 
-			render() {
-				return !this.state.props ? null : render(this.state.props)
-			}
+      render() {
+        return !this.state.props ? null : render(this.state.props)
+      }
 
-			componentWillMount() {
-				this._subscription = this._props$.subscribe(
-					this._setProps,
-					this._unsubscribe,
-					this._unsubscribe
-				)
-				this.props$.next(this.props)
-			}
+      componentWillMount() {
+        this._subscription = this._props$.subscribe(
+          this._setProps,
+          this._unsubscribe,
+          this._unsubscribe
+        )
+        this.props$.next(this.props)
+      }
 
-			componentWillReceiveProps(nextProps: Readonly<P>) {
-				this.props$.next(nextProps)
-			}
+      componentWillReceiveProps(nextProps: Readonly<P>) {
+        this.props$.next(nextProps)
+      }
 
-			componentWillUnmount () {
-				this.props$.complete()
-			}
+      componentWillUnmount () {
+        this.props$.complete()
+      }
 
       private _subscription: Subscription
 
-			private _unsubscribe = () => {
-				this._subscription.unsubscribe()
-			}
+      private _unsubscribe = () => {
+        this._subscription.unsubscribe()
+      }
 
-			private _setProps = (props: Readonly<Q>) => {
-				this.setState({ props })
-			}
+      private _setProps = (props: Readonly<Q>) => {
+        this.setState({ props })
+      }
 
-			// not shared: simultaneously subscribed at most once (when mounted)
-			private _props$ = toESObservable(mapProps(fromESObservable(this.props$)))
-		} as any // retrofit back generic from base class
-	}
+      // not shared: simultaneously subscribed at most once (when mounted)
+      private _props$ = toESObservable(mapProps(fromESObservable(this.props$)))
+    } as any // retrofit back generic from base class
+  }
 }
 
 function identity <T>(val: T): T {
-	return val
+  return val
 }

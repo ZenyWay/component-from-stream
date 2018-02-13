@@ -18,37 +18,37 @@ import { Observable } from 'rxjs'
 import CopyButton from './copy-button'
 
 const componentFromStream = createComponentFromStreamFactory(
-	Component,
-	Observable.from
+  Component,
+  Observable.from
 )
 const App = componentFromStream(renderApp, fromTimer)
 
 function fromTimer(props$) {
-	const timer$ = Observable.interval(1000)
-		.takeUntil(props$.last().do(log('last:'), log('error:'), log('done:')))
-		.map(time)
-		.take(8)
-		.concat(Observable.of(void 0)) // hide -> unmount children
+  const timer$ = Observable.interval(1000)
+    .takeUntil(props$.last().do(log('last:'), log('error:'), log('done:')))
+    .map(time)
+    .take(8)
+    .concat(Observable.of(void 0)) // hide -> unmount children
 
-	return timer$.do(log('from-timer:'))
+  return timer$.do(log('from-timer:'))
 }
 
 function time() {
-	const time = new Date().toTimeString()
-	return { time }
+  const time = new Date().toTimeString()
+  return { time }
 }
 
 function renderApp({ time }) {
-	return (
-		<div>
-			<CopyButton value={`A: ${time}`} />
-			<CopyButton value={`B: ${time}`} />
-		</div>
-	)
+  return (
+    <div>
+      <CopyButton value={`A: ${time}`} />
+      <CopyButton value={`B: ${time}`} />
+    </div>
+  )
 }
 
 render(<App />, document.getElementById('app'))
 
 function log(label) {
-	return console.log.bind(console, label)
+  return console.log.bind(console, label)
 }

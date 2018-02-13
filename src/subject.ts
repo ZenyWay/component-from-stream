@@ -44,12 +44,12 @@ export interface Observer<T> {
 }
 
 export interface Observable<T> {
-	subscribe(observer: Observer<T>): Subscription
+  subscribe(observer: Observer<T>): Subscription
   subscribe (
-		next: (val: T) => void,
-  	error: (error: any) => void,
-		complete: () => void
-	): Subscription
+    next: (val: T) => void,
+    error: (error: any) => void,
+    complete: () => void
+  ): Subscription
 }
 
 export interface Subscription {
@@ -62,41 +62,41 @@ interface Emitter<T> {
 }
 
 export default function createSubject <T>(): Subject<T> {
-	const { emit, listen }: Emitter<T> = createChangeEmitter()
+  const { emit, listen }: Emitter<T> = createChangeEmitter()
 
-	return {
-		next (this: void, val) {
-			emit('next', val)
-		},
-		error (this: void, error) {
-			emit('error', error)
-		},
-		complete (this: void, ) {
-			emit('complete')
-		},
-		subscribe (
-			this: void,
-			observerOrNext: Observer<T>|((val: T) => void),
-  		error?: (error: any) => void,
-			complete?: () => void
-		) {
-			let done = false
-			const observer = typeof observerOrNext !== 'function'
-			? observerOrNext
-			: { next: observerOrNext, error, complete }
+  return {
+    next (this: void, val) {
+      emit('next', val)
+    },
+    error (this: void, error) {
+      emit('error', error)
+    },
+    complete (this: void, ) {
+      emit('complete')
+    },
+    subscribe (
+      this: void,
+      observerOrNext: Observer<T>|((val: T) => void),
+      error?: (error: any) => void,
+      complete?: () => void
+    ) {
+      let done = false
+      const observer = typeof observerOrNext !== 'function'
+      ? observerOrNext
+      : { next: observerOrNext, error, complete }
 
-			return {
-				unsubscribe: listen(observe)
-			}
+      return {
+        unsubscribe: listen(observe)
+      }
 
-			function observe(key: keyof Observer<T>, val?: any) {
-				if (done) { return }
-				if (key !== 'next') { done = true }
-				(observer[key] as (val?: any) => void)(val) // throws if unknown key
-			}
-		},
-		[$$observable](): Observable<T> {
-			return this
-		}
-	}
+      function observe(key: keyof Observer<T>, val?: any) {
+        if (done) { return }
+        if (key !== 'next') { done = true }
+        (observer[key] as (val?: any) => void)(val) // throws if unknown key
+      }
+    },
+    [$$observable](): Observable<T> {
+      return this
+    }
+  }
 }

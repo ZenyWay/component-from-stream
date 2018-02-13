@@ -19,11 +19,11 @@ import { Observable } from './subject'
  */
 export default
 function combine<I,O>(...ops: ((val: any) => any)[]): (val: I) => O {
-	return function (val: I) {
-		return ops.reduceRight(apply, val)
-	}
+  return function (val: I) {
+    return ops.reduceRight(apply, val)
+  }
 }
 
 function apply(obj: any, fn: Function) {
-	return fn(obj)
+  return fn(obj)
 }

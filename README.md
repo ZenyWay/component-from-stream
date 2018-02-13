@@ -4,26 +4,124 @@
 based on [component-from-stream](https://github.com/acdlite/recompose/blob/master/docs/API.md#componentfromstream)
 from [recompose](https://npmjs.com/package/recompose),
 with the following enhancements:
-* the linear stateless rendering function (the component's view) is separated
-from the `props$` reactive operator (the component's behaviour).
-* components expose a new `lift` class method
-for further composing its `props$` reactive operator
-with other reactive operators, i.e. adding behaviour.
-* the `props$` Observable completes on `componentWillUnmount`,
-pushing life-cycle management into the component's behaviour
-(its `props$` reactive operator).
-* renders null when the component's `props$` reactive operator emits a falsy value.
+* in addition to being independent from any Observable framework,
+this implementation is also independent from any rendering framework,
+so long as it provides a React-like `Component` class.
+these dependencies are injected by the exported factory
+into the component factory it returns.
+* components are expressed as the combination of a view and a set of behaviours:
+the stateless rendering function (the component's view) is separated
+from the potentially stateful reactive operator (the component's behaviour)
+which maps the component's input stream of `props` to that of its rendering function.
+* components expose a new `lift` class method for deriving new components
+with additional behaviour by composing the original component's reactive operator
+with additional reactive operators.
+* for convenience, this module also exposes its `combine` function
+for combining reactive operators.
+* the `props$` Observable from which a component streams its `props`
+automatically completes on `componentWillUnmount`,
+pushing life-cycle management into the component's reactive operator (behaviour).
+* components only render when its reactive operator emits a `props` object
+to the rendering function: rendering can hence be gated
+within a component's reactive operator (behaviour).
+* a component renders null when it's reactive operator emits a falsy value
+instead of a `props` object to the rendering function.
 
 Observable libraries such as [`RxJS`](http://reactivex.io/rxjs/)
-provide very complete sets of reactive operators
+provide a very rich set of reactive operators
 with which complex component behaviours can be implemented
-in a purely reactive approach.
+in a purely reactive way.
 this implementation focuses on the glue with which to connect reactive behaviour
 with stateless rendering functions.
 
 # Example
-see the [example](./example) in this directory.
+see the full [example](./example/index.tsx) in this directory.
 run the example in your browser with `npm run example`.
+
+this example is somewhat contrived, but should demonstrate
+how to implement a `component-from-stream`
+described in terms of its view and composed behaviour:
+
+`copy-button.ts`
+```ts
+import renderButton from './view'
+import withCopyButtonBehaviour from './behaviour'
+import { createComponentFromStreamFactory } from 'component-from-stream'
+import { Observable } from 'rxjs'
+import { distinctUntilChanged } from 'rxjs/operators'
+
+const componentFromStream = createComponentFromStreamFactory(
+  Component,
+  Observable.from
+)
+
+export default componentFromStream(
+  renderButton,
+  distinctUntilChanged(shallowEqual) // only render when necessary
+).lift(withCopyButtonBehaviour)
+
+...
+```
+
+`behaviour.ts`
+```ts
+import { combine } from 'component-from-stream'
+import { map } from 'rxjs/operators'
+
+export default combine(
+  map(selectEntries('disabled', 'onClick', 'icon')),
+  map(withToggleIconWhenDisabled),
+  withToggleDisabledOnSuccess,
+  map(withCopyOnClick),
+  withEventEmitter('onClick'),
+  map(withDefaultProps)
+)
+
+...
+```
+each argument supplied to the above `combine` function is a reactive operator
+which implements a specific unit behaviour by generating an output stream
+of `props` from an input stream of `props`.
+e.g. `withEventEmitter('onClick')` adds two `props` entries (`onClick` and `event`)
+and emits the enhanced `props` object whenever it receives a new input,
+or whenever the `onClick` handler is called (from the rendered `HTMLElement`):
+```ts
+function withEventEmitter (name) {
+  return function (props$) {
+    const emitter$ = new Subject()
+    const emitter = emitter$.next.bind(emitter$)
+    const withEmitter$ = props$.map(addEmitterProp).share()
+    const event$ = emitter$.map(toEntry('event'))
+      .takeUntil(withEmitter$.last()) // unsubscribe when component will unmount
+
+    return Observable.merge(
+      withEmitter$,
+      event$.withLatestFrom(withEmitter$, merge)
+    )
+
+    function addEmitterProp (props) {
+      return { ...props, [name]: emitter }
+    }
+  }
+}
+```
+the resulting event can then be further processed by a downstream operator,
+e.g. `map(withCopyOnClick)`:
+```ts
+import { map } from 'rxjs/operators'
+import copyToClipboard = require('clipboard-copy')
+...
+function withCopyOnClick (props: any) {
+  return !props || !props.event || props.event.type !== 'click'
+    ? props
+    : { ...props, success: copyOnClick(props) }
+}
+
+function copyOnClick({ event, value }) {
+  event.preventDefault()
+  return copyToClipboard(value) //true on success
+}
+```
 
 # API
 the component factory is not directly exposed by this module:
@@ -49,10 +147,10 @@ type ComponentFromStreamFactory<N={},C={}> = <P={},Q={}>(
 ) => ComponentFromStreamConstructor<N, C, P, Q>
 
 interface ComponentFromStreamConstructor<N={},C={},P={},Q={}> {
-	new (props: P, context?: any): C & ComponentFromStream<N,P,Q>
-	lift <R>(
-		fromOwnProps: (props: Observable<R>) => Observable<P>
-	): ComponentFromStreamConstructor<N,C,R,Q>
+  new (props: P, context?: any): C & ComponentFromStream<N,P,Q>
+  lift <R>(
+    fromOwnProps: (props: Observable<R>) => Observable<P>
+  ): ComponentFromStreamConstructor<N,C,R,Q>
 }
 
 interface ComponentFromStream<N={},P={},Q={}> extends Component<N,P,{props?:Q}> {
@@ -63,7 +161,7 @@ interface ComponentFromStream<N={},P={},Q={}> extends Component<N,P,{props?:Q}> 
 }
 
 interface ComponentConstructor<N={},P={}> {
-	new (props: P, context?: any): Component<N,{},{}>
+  new (props: P, context?: any): Component<N,{},{}>
 }
 
 interface Component<N={},P={},S={}> {

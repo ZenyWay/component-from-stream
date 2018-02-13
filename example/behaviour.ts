@@ -19,12 +19,12 @@ import { map } from 'rxjs/operators'
 import copyToClipboard = require('clipboard-copy')
 
 export const DEFAULT_PROPS: CopyButtonProps = {
-	value: '',
-	timeout: 500, // ms
-	icons: {
-		disabled: 'fa-check',
-		enabled: 'fa-copy'
-	}
+  value: '',
+  timeout: 500, // ms
+  icons: {
+    disabled: 'fa-check',
+    enabled: 'fa-copy'
+  }
 }
 
 export interface CopyButtonProps {
@@ -43,17 +43,17 @@ interface OnClickProps {
 }
 
 export default combine(
-	map(selectEntries<keyof ButtonProps>('disabled', 'onClick', 'icon')),
-	map(withToggleIconWhenDisabled),
-	withToggleDisabledOnSuccess,
-	map(withCopyOnClick),
-	withEventEmitter('onClick'),
-	map(withDefaultProps)
+  map(selectEntries<keyof ButtonProps>('disabled', 'onClick', 'icon')),
+  map(withToggleIconWhenDisabled),
+  withToggleDisabledOnSuccess,
+  map(withCopyOnClick),
+  withEventEmitter('onClick'),
+  map(withDefaultProps)
 ) as Operator<CopyButtonProps,ButtonProps>
 
 function withDefaultProps (props: Partial<CopyButtonProps>): CopyButtonProps {
-	const icons = { ...DEFAULT_PROPS.icons, ...(props && props.icons) }
-	return { ...DEFAULT_PROPS, ...props, icons }
+  const icons = { ...DEFAULT_PROPS.icons, ...(props && props.icons) }
+  return { ...DEFAULT_PROPS, ...props, icons }
 }
 
 type Emitter<V> = (val?: V) => void
@@ -61,82 +61,82 @@ type Emitter<V> = (val?: V) => void
 function withEventEmitter <E extends { [name: string]: Emitter<any> }>(
   name: keyof E
 ) {
-	return function <P>(props$: Observable<P>): Observable<P&E&{ event?: any }> {
-		const emitter$ = new Subject()
-		const emitter = emitter$.next.bind(emitter$)
-		const withEmitter$ = props$.map(addEmitterProp).share()
+  return function <P>(props$: Observable<P>): Observable<P&E&{ event?: any }> {
+    const emitter$ = new Subject()
+    const emitter = emitter$.next.bind(emitter$)
+    const withEmitter$ = props$.map(addEmitterProp).share()
     const event$ = emitter$.map(toEntry('event'))
       .takeUntil(withEmitter$.last()) // unsubscribe when component will unmount
 
-		return Observable.merge(
-			withEmitter$,
-			event$.withLatestFrom(withEmitter$, merge)
-		).do(log('with-event-handler:'))
+    return Observable.merge(
+      withEmitter$,
+      event$.withLatestFrom(withEmitter$, merge)
+    ).do(log('with-event-handler:'))
 
-		function addEmitterProp (props: any) {
-			return { ...props, [name]: emitter }
-		}
-	}
+    function addEmitterProp (props: any) {
+      return { ...props, [name]: emitter }
+    }
+  }
 }
 
 function withCopyOnClick (props: any) {
-	return !props || !props.event || props.event.type !== 'click'
-		? props
-		: { ...props, success: copyOnClick(props) }
+  return !props || !props.event || props.event.type !== 'click'
+    ? props
+    : { ...props, success: copyOnClick(props) }
 }
 
 function copyOnClick({ event, value }) {
-	event.preventDefault()
-	return copyToClipboard(value) //true on success
+  event.preventDefault()
+  return copyToClipboard(value) //true on success
 }
 
 function withToggleDisabledOnSuccess(props$) {
-	const _props$ = props$.share()
-	const timeout$ = pluckDistinct(_props$, 'timeout')
-	const disable$ = pluckDistinct(_props$, 'success')
-		.filter(Boolean)
-		.share()
-	const enable$ = timeout$.switchMap(delay(disable$)).startWith(true) // stateful
-	const disabled$ = Observable.merge(enable$.mapTo(false), disable$).map(
-		toEntry('disabled')
-	)
+  const _props$ = props$.share()
+  const timeout$ = pluckDistinct(_props$, 'timeout')
+  const disable$ = pluckDistinct(_props$, 'success')
+    .filter(Boolean)
+    .share()
+  const enable$ = timeout$.switchMap(delay(disable$)).startWith(true) // stateful
+  const disabled$ = Observable.merge(enable$.mapTo(false), disable$).map(
+    toEntry('disabled')
+  )
 
-	return Observable.combineLatest(_props$, disabled$, merge).do(
-		log('with-toggle-disable-on-event:')
-	)
+  return Observable.combineLatest(_props$, disabled$, merge).do(
+    log('with-toggle-disable-on-event:')
+  )
 }
 
 function withToggleIconWhenDisabled (props: any) {
-	const { disabled = false, icons } = props
-	const icon = disabled ? icons.disabled : icons.enabled
-	return { ...props, disabled, icon }
+  const { disabled = false, icons } = props
+  const icon = disabled ? icons.disabled : icons.enabled
+  return { ...props, disabled, icon }
 }
 
 function selectEntries <K extends string>(...keys: K[]) {
-	return function <T extends Partial<{ [P in K]: T[P] }>>(obj: T): Pick<T,K> {
-		return keys.reduce(addEntry, {})
+  return function <T extends Partial<{ [P in K]: T[P] }>>(obj: T): Pick<T,K> {
+    return keys.reduce(addEntry, {})
 
-		function addEntry (selected, key) {
-			if (key in obj) { selected[key] = obj[key] }
-			return selected
-		}
-	}
+    function addEntry (selected, key) {
+      if (key in obj) { selected[key] = obj[key] }
+      return selected
+    }
+  }
 }
 
 function delay <S>(source$: Observable<S>) {
-	return function (timeout: number) {
-		return source$.delay(timeout)
-	}
+  return function (timeout: number) {
+    return source$.delay(timeout)
+  }
 }
 
 function merge <T>(...props: any[]): T {
-	return Object.assign({}, ...props)
+  return Object.assign({}, ...props)
 }
 
 function toEntry (key: string) {
-	return function <T>(val: T) {
-		return { [key]: val }
-	}
+  return function <T>(val: T) {
+    return { [key]: val }
+  }
 }
 
 function pluckDistinct<S> (
@@ -144,15 +144,15 @@ function pluckDistinct<S> (
   key: keyof S,
   comparator?: (a: any, b: any) => boolean
 ) {
-	return source$.pluck(key).distinctUntilChanged(comparator)
+  return source$.pluck(key).distinctUntilChanged(comparator)
 }
 
 /*
 function isHidden({ hidden, value }) {
-	return !!hidden || !value
+  return !!hidden || !value
 }
 */
 
 function log (label: string): (...args: any[]) => void {
-	return console.log.bind(console, label)
+  return console.log.bind(console, label)
 }

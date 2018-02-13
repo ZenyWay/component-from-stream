@@ -16,20 +16,20 @@ import { VNode } from 'inferno'
 import { createElement } from 'inferno-create-element'
 
 export interface ButtonProps {
-	disabled: boolean
-	onClick: (event: any) => void
-	icon
+  disabled: boolean
+  onClick: (event: any) => void
+  icon
 }
 
 export default function render (
-	{ disabled = false, onClick = false, icon = 'fa-question' }: ButtonProps
+  { disabled = false, onClick = false, icon = 'fa-question' }: ButtonProps
 ): VNode {
-	return (
-		<button
-			className="btn btn-outline-secondary"
-			onClick={onClick}
-			disabled={disabled}>
-			<i className={`fa fa-fw ${icon}`} />
-		</button>
-	)
+  return (
+    <button
+      className="btn btn-outline-secondary"
+      onClick={onClick}
+      disabled={disabled}>
+      <i className={`fa fa-fw ${icon}`} />
+    </button>
+  )
 }
