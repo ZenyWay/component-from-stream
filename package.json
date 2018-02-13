@@ -1,0 +1,58 @@
+{
+  "name": "component-from-stream",
+  "version": "0.1.0",
+  "description": "create a React-like component that sources its props from an observable stream",
+  "main": "dist/index.js",
+  "scripts": {
+    "predist": "mkdirp dist && rimraf dist/*",
+    "dist": "tsc -p src --outDir dist",
+    "postdist": "npm run uglify",
+    "example": "npm run example:bundle && npm run example:serve",
+    "example:serve": "http-server -c-1 -i -e html -o -p 6510 example",
+    "preexample:bundle": "rimraf spec/example/*.js",
+    "example:bundle": "browserify example/index.tsx -p [ tsify --project example ] -o example/index.js",
+    "prepublish": "npm run dist",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "uglify": "uglifyjs dist/index.js -c -m -o dist/index.min.js && uglifyjs dist/combine.js -c -m -o dist/combine.min.js && uglifyjs dist/subject.js -c -m -o dist/subject.min.js"
+  },
+  "keywords": [
+    "recompose",
+    "observable",
+    "stream",
+    "react",
+    "preact",
+    "inferno"
+  ],
+  "author": {
+    "name": "Stephane M. Catala",
+    "email": "stephane@zenyway.com"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zenyway/component-from-stream.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zenyway/component-from-stream/issues"
+  },
+  "homepage": "https://github.com/zenyway/component-from-stream#readme",
+  "devDependencies": {
+    "@types/change-emitter": "^0.1.2",
+    "@types/es6-promise": "^3.3.0",
+    "browserify": "^16.1.0",
+    "clipboard-copy": "^1.4.2",
+    "http-server": "^0.11.1",
+    "inferno": "^4.0.2",
+    "inferno-create-element": "^4.0.2",
+    "rimraf": "^2.6.2",
+    "rxjs": "^5.5.6",
+    "tsify": "^3.0.4",
+    "tslint": "^5.9.1",
+    "typescript": "^2.7.1",
+    "uglify-es": "^3.3.10"
+  },
+  "dependencies": {
+    "change-emitter": "^0.1.6",
+    "symbol-observable": "^1.2.0"
+  }
+}
