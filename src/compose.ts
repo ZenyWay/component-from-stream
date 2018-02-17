@@ -18,7 +18,7 @@ import { Observable } from './subject'
  * @return an Operator that applies the given operators from right to left.
  */
 export default
-function combine<I,O>(...ops: ((val: any) => any)[]): (val: I) => O {
+function compose<I,O>(...ops: ((val: any) => any)[]): (val: I) => O {
   return function (val: I) {
     return ops.reduceRight(apply, val)
   }

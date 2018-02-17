@@ -72,9 +72,9 @@
  * SOFTWARE.
  */
 import createSubject, { Observable, Subscription } from './subject'
-import combine from './combine'
+import compose from './compose'
 
-export { combine }
+export { compose }
 
 export type ComponentFromStreamFactory<N={},C={}> = <P={},Q={}>(
   render: (props: Q) => N,
@@ -89,11 +89,15 @@ export interface ComponentFromStreamConstructor<N={},C={},P={},Q={}> {
 }
 
 export interface ComponentFromStream<N={},P={},Q={}>
-extends Component<N,P,{props?:Q}> {
+extends Component<N,P,ViewPropsState<Q>> {
   props$: Observable<Readonly<P>>
   componentWillMount (): void
   componentWillReceiveProps (nextProps: Readonly<P>, nextContext: any): void
   componentWillUnmount (): void
+  shouldComponentUpdate (
+    nextProps: Readonly<P>,
+    nextState: Readonly<ViewPropsState<Q>>
+  ): boolean
 }
 
 export interface ComponentConstructor<N={},P={}> {
@@ -105,6 +109,10 @@ export interface Component<N={},P={},S={}> {
   render(): N
   props: Readonly<P>
   state: Readonly<S>
+}
+
+export interface ViewPropsState<Q> {
+  viewProps: Q
 }
 
 export type Operator<I,O> = (props$: Observable<I>) => Observable<O>
@@ -123,22 +131,22 @@ export default function createComponentFromStreamFactory <N={},C={}>(
     implements ComponentFromStream<N,P,Q> {
       static lift <R>(op: Operator<R,P>): ComponentFromStreamConstructor<N, C, R, Q>
       static lift <R>(...ops: Operator<any,any>[]) {
-        return createComponentFromStream<R,Q>(render, combine(mapProps, ...ops))
+        return createComponentFromStream<R,Q>(render, compose(mapProps, ...ops))
       }
 
-      state: Readonly<{ props?: Q }> = {}
+      state = {} as Readonly<ViewPropsState<Q>> // view props
 
-      props: Readonly<P>
+      props: Readonly<P> // own props
 
-      props$ = createSubject<Readonly<P>>()
+      props$ = createSubject<Readonly<P>>() // stream of own props
 
       render() {
-        return !this.state.props ? null : render(this.state.props)
+        return !this.state.viewProps ? null : render(this.state.viewProps)
       }
 
       componentWillMount() {
-        this._subscription = this._props$.subscribe(
-          this._setProps,
+        this._subscription = this._viewProps$.subscribe(
+          this._setViewProps,
           this._unsubscribe,
           this._unsubscribe
         )
@@ -153,18 +161,19 @@ export default function createComponentFromStreamFactory <N={},C={}>(
         this.props$.complete()
       }
 
+      shouldComponentUpdate(_: any, nextState: Readonly<ViewPropsState<Q>>) {
+        return nextState.viewProps !== this.state.viewProps
+      }
+
       private _subscription: Subscription
 
-      private _unsubscribe = () => {
-        this._subscription.unsubscribe()
-      }
+      private _unsubscribe = () => this._subscription.unsubscribe()
 
-      private _setProps = (props: Readonly<Q>) => {
-        this.setState({ props })
-      }
+      private _setViewProps =
+        (viewProps: Readonly<Q>) => this.setState({ viewProps })
 
       // not shared: simultaneously subscribed at most once (when mounted)
-      private _props$ = toESObservable(mapProps(fromESObservable(this.props$)))
+      private _viewProps$ = toESObservable(mapProps(fromESObservable(this.props$)))
     } as any // retrofit back generic from base class
   }
 }
