@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * Limitations under the License.
  */
-import { Observable } from './subject'
+import { Observable } from 'rx-subject'
 
 /**
  * @return an Operator that applies the given operators from right to left.

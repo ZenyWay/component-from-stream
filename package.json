@@ -1,8 +1,9 @@
 {
   "name": "component-from-stream",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "create a React-like component that sources its props from an observable stream",
-  "main": "dist/index.js",
+  "main": "dist/index.min.js",
+  "typings": "dist/index.d.ts",
   "scripts": {
     "predist": "mkdirp dist && rimraf dist/*",
     "dist": "tsc -p src --outDir dist",
@@ -13,7 +14,7 @@
     "example:bundle": "browserify example/index.tsx -p [ tsify --project example ] -o example/index.js",
     "prepublish": "npm run dist",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "uglify": "uglifyjs dist/index.js -c -m -o dist/index.min.js && uglifyjs dist/compose.js -c -m -o dist/compose.min.js && uglifyjs dist/subject.js -c -m -o dist/subject.min.js"
+    "uglify": "uglifyjs dist/index.js -c -m -o dist/index.min.js && uglifyjs dist/compose.js -c -m -o dist/compose.min.js"
   },
   "keywords": [
     "recompose",
@@ -52,7 +53,6 @@
     "uglify-es": "^3.3.10"
   },
   "dependencies": {
-    "change-emitter": "^0.1.6",
-    "symbol-observable": "^1.2.0"
+    "rx-subject": "^1.1.0"
   }
 }

@@ -13,7 +13,7 @@
  */
 
 import { ButtonProps } from './view'
-import { combine, Operator } from '../src'
+import { compose, Operator } from '../src'
 import { Observable, Subject } from 'rxjs'
 import { map } from 'rxjs/operators'
 import copyToClipboard = require('clipboard-copy')
@@ -42,7 +42,7 @@ interface OnClickProps {
   event?: any
 }
 
-export default combine(
+export default compose(
   map(selectEntries<keyof ButtonProps>('disabled', 'onClick', 'icon')),
   map(withToggleIconWhenDisabled),
   withToggleDisabledOnSuccess,

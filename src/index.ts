@@ -71,7 +71,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-import createSubject, { Observable, Subscription } from './subject'
+import createSubject, { Observable, Subscription } from 'rx-subject'
 import compose from './compose'
 
 export { compose }
@@ -138,7 +138,9 @@ export default function createComponentFromStreamFactory <N={},C={}>(
 
       props: Readonly<P> // own props
 
-      props$ = createSubject<Readonly<P>>() // stream of own props
+      private _props = createSubject<Readonly<P>>()
+
+      props$ = this._props.source$
 
       render() {
         return !this.state.viewProps ? null : render(this.state.viewProps)
@@ -150,15 +152,15 @@ export default function createComponentFromStreamFactory <N={},C={}>(
           this._unsubscribe,
           this._unsubscribe
         )
-        this.props$.next(this.props)
+        this._props.sink.next(this.props)
       }
 
       componentWillReceiveProps(nextProps: Readonly<P>) {
-        this.props$.next(nextProps)
+        this._props.sink.next(nextProps)
       }
 
       componentWillUnmount () {
-        this.props$.complete()
+        this._props.sink.complete()
       }
 
       shouldComponentUpdate(_: any, nextState: Readonly<ViewPropsState<Q>>) {
