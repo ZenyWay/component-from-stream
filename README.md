@@ -6,7 +6,7 @@ from [recompose](https://npmjs.com/package/recompose),
 with the following enhancements:
 * in addition to being independent from any Observable framework,
 this implementation is also independent from any rendering framework,
-so long as it provides a React-like `Component` class.
+so long as it provides a `React`-like `Component` class.
 these dependencies are injected by the exported factory
 into the component factory it returns.
 * components are expressed as the combination of a view and a set of behaviours:
@@ -16,8 +16,8 @@ which maps the component's input stream of `props` to that of its rendering func
 * components expose a new `lift` class method for deriving new components
 with additional behaviour by composing the original component's reactive operator
 with additional reactive operators.
-* for convenience, this module also exposes its `combine` function
-for combining reactive operators.
+* for convenience, this module also exposes its `compose` function
+for composing reactive operators.
 * the `props$` Observable from which a component streams its `props`
 automatically completes on `componentWillUnmount`,
 pushing life-cycle management into the component's reactive operator (behaviour).
@@ -47,77 +47,57 @@ described in terms of its view and composed behaviour:
 import renderButton from './view'
 import withCopyButtonBehaviour from './behaviour'
 import { createComponentFromStreamFactory } from 'component-from-stream'
-import { Observable } from 'rxjs'
+import { from } from 'rxjs/observable/from'
 import { distinctUntilChanged } from 'rxjs/operators'
 
-const componentFromStream = createComponentFromStreamFactory(
-  Component,
-  Observable.from
-)
+const componentFromStream = createComponentFromStreamFactory(Component, from)
 
 export default componentFromStream(
   renderButton,
   distinctUntilChanged(shallowEqual) // only render when necessary
 ).lift(withCopyButtonBehaviour)
 
-...
+// ...
 ```
 
 `behaviour.ts`
 ```ts
-import { combine } from 'component-from-stream'
-import { map } from 'rxjs/operators'
+import { compose } from 'component-from-stream'
+import withEventHandlerProps from 'rx-with-event-handler-props'
+import { map, tap } from 'rxjs/operators'
 
-export default combine(
-  map(selectEntries('disabled', 'onClick', 'icon')),
+export default compose(
+  tap(log('view-props:')),
+  map(pick('disabled', 'onClick', 'icon')),
   map(withToggleIconWhenDisabled),
   withToggleDisabledOnSuccess,
   map(withCopyOnClick),
-  withEventEmitter('onClick'),
+  withEventHandlerProps('click'),
   map(withDefaultProps)
 )
 
-...
+// ...
 ```
-each argument supplied to the above `combine` function is a reactive operator
+each argument supplied to the above `compose` function is a reactive operator
 which implements a specific unit behaviour by generating an output stream
 of `props` from an input stream of `props`.
-e.g. `withEventEmitter('onClick')` adds two `props` entries (`onClick` and `event`)
-and emits the enhanced `props` object whenever it receives a new input,
-or whenever the `onClick` handler is called (from the rendered `HTMLElement`):
-```ts
-function withEventEmitter (name) {
-  return function (props$) {
-    const emitter$ = new Subject()
-    const emitter = emitter$.next.bind(emitter$)
-    const withEmitter$ = props$.map(addEmitterProp).share()
-    const event$ = emitter$.map(toEntry('event'))
-      .takeUntil(withEmitter$.last()) // unsubscribe when component will unmount
+e.g. `withEventHandlerProps('click')` from [`rx-with-event-handler-props`](https://npmjs.com/package/rx-with-event-handler-props)
+adds two `props` (`onClick` and `event`)
+and emits the extended `props` object whenever it receives a new input,
+or whenever the `onClick` handler is called (from the rendered `Component`).
 
-    return Observable.merge(
-      withEmitter$,
-      event$.withLatestFrom(withEmitter$, merge)
-    )
-
-    function addEmitterProp (props) {
-      return { ...props, [name]: emitter }
-    }
-  }
-}
-```
 the resulting event can then be further processed by a downstream operator,
 e.g. `map(withCopyOnClick)`:
 ```ts
-import { map } from 'rxjs/operators'
 import copyToClipboard = require('clipboard-copy')
 ...
 function withCopyOnClick (props: any) {
-  return !props || !props.event || props.event.type !== 'click'
+  return !props || !props.event || props.event.id !== 'click'
     ? props
-    : { ...props, success: copyOnClick(props) }
+    : { ...props, success: copyOnClick(props.event.payload, props.value) }
 }
 
-function copyOnClick({ event, value }) {
+function copyOnClick(event, value) {
   event.preventDefault()
   return copyToClipboard(value) //true on success
 }
@@ -126,11 +106,11 @@ function copyOnClick({ event, value }) {
 # API
 the component factory is not directly exposed by this module:
 instead, a higher-level factory is exposed for injecting the following dependencies:
-* the base `Component` from a [React](https://reactjs.org)-compatible library,
-e.g. [PREACT](https://preactjs.com/) or [Inferno](https://infernojs.org/).
+* the base `Component` from a [`React`](https://reactjs.org)-like library,
+e.g. [`PREACT`](https://preactjs.com/) or [`Inferno`](https://infernojs.org/).
 * Observable conversion functions for reactive operator support
 from third-party Observable libraries, e.g. [`RxJS`](http://reactivex.io/rxjs/)
-or [MOST](https://www.npmjs.com/package/most).
+or [`MOST`](https://www.npmjs.com/package/most).
 
 this higher-level factory returns the required component factory
 after injection of the supplied dependencies.
@@ -172,9 +152,9 @@ interface Component<N={},P={},S={}> {
 }
 ```
 
-this module also exposes its `combine` function for combining reactive operators:
+this module also exposes its `compose` function for composing reactive operators:
 ```ts
-declare function combine<I,O>(...ops: Operator<any,any>[]): Operator<I,O>
+declare function compose<I,O>(...ops: Operator<any,any>[]): Operator<I,O>
 
 type Operator<I,O> = (props$: Observable<I>) => Observable<O>
 ```

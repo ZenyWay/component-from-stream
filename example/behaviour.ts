@@ -14,8 +14,14 @@
 
 import { ButtonProps } from './view'
 import { compose, Operator } from '../src'
-import { Observable, Subject } from 'rxjs'
-import { map } from 'rxjs/operators'
+import { Observable } from 'rxjs/Observable'
+import { combineLatest } from 'rxjs/observable/combineLatest'
+import { merge } from 'rxjs/observable/merge'
+import {
+	delay, distinctUntilChanged, filter, map, mapTo, pluck, share, startWith,
+	switchMap, tap
+} from 'rxjs/operators'
+import withEventHandlerProps from 'rx-with-event-handler-props'
 import copyToClipboard = require('clipboard-copy')
 
 export const DEFAULT_PROPS: CopyButtonProps = {
@@ -43,11 +49,14 @@ interface OnClickProps {
 }
 
 export default compose(
-  map(selectEntries<keyof ButtonProps>('disabled', 'onClick', 'icon')),
+  tap(log('view-props:')),
+  map(pick<keyof ButtonProps>('disabled', 'onClick', 'icon')),
   map(withToggleIconWhenDisabled),
+  tap(log('with-toggle-disabled-on-success:')),
   withToggleDisabledOnSuccess,
   map(withCopyOnClick),
-  withEventEmitter('onClick'),
+  tap(log('with-event-handler-props:')),
+  withEventHandlerProps('click'),
   map(withDefaultProps)
 ) as Operator<CopyButtonProps,ButtonProps>
 
@@ -56,54 +65,35 @@ function withDefaultProps (props: Partial<CopyButtonProps>): CopyButtonProps {
   return { ...DEFAULT_PROPS, ...props, icons }
 }
 
-type Emitter<V> = (val?: V) => void
-
-function withEventEmitter <E extends { [name: string]: Emitter<any> }>(
-  name: keyof E
-) {
-  return function <P>(props$: Observable<P>): Observable<P&E&{ event?: any }> {
-    const emitter$ = new Subject()
-    const emitter = emitter$.next.bind(emitter$)
-    const withEmitter$ = props$.map(addEmitterProp).share()
-    const event$ = emitter$.map(toEntry('event'))
-      .takeUntil(withEmitter$.last()) // unsubscribe when component will unmount
-
-    return Observable.merge(
-      withEmitter$,
-      event$.withLatestFrom(withEmitter$, merge)
-    ).do(log('with-event-handler:'))
-
-    function addEmitterProp (props: any) {
-      return { ...props, [name]: emitter }
-    }
-  }
-}
-
 function withCopyOnClick (props: any) {
-  return !props || !props.event || props.event.type !== 'click'
+  return !props || !props.event || props.event.id !== 'click'
     ? props
-    : { ...props, success: copyOnClick(props) }
+    : { ...props, success: copyOnClick(props.event.payload, props.value) }
 }
 
-function copyOnClick({ event, value }) {
+function copyOnClick(event, value) {
   event.preventDefault()
   return copyToClipboard(value) //true on success
 }
 
 function withToggleDisabledOnSuccess(props$) {
-  const _props$ = props$.share()
-  const timeout$ = pluckDistinct(_props$, 'timeout')
-  const disable$ = pluckDistinct(_props$, 'success')
-    .filter(Boolean)
-    .share()
-  const enable$ = timeout$.switchMap(delay(disable$)).startWith(true) // stateful
-  const disabled$ = Observable.merge(enable$.mapTo(false), disable$).map(
-    toEntry('disabled')
+  const _props$ = props$.pipe(share())
+  const timeout$ = _props$.pipe(pluck('timeout'), distinctUntilChanged())
+  const disable$ = _props$.pipe(
+    pluck('success'),
+    distinctUntilChanged(),
+    filter(Boolean),
+    share())
+  const enable$ = timeout$.pipe(
+    switchMap(lag(disable$)), // stateful
+    startWith(true))
+  const disabled$ = merge(
+    enable$.pipe(mapTo(false)),
+    disable$
   )
+  .pipe(map(toEntry('disabled')))
 
-  return Observable.combineLatest(_props$, disabled$, merge).do(
-    log('with-toggle-disable-on-event:')
-  )
+  return combineLatest(_props$, disabled$, shallowMerge)
 }
 
 function withToggleIconWhenDisabled (props: any) {
@@ -112,7 +102,7 @@ function withToggleIconWhenDisabled (props: any) {
   return { ...props, disabled, icon }
 }
 
-function selectEntries <K extends string>(...keys: K[]) {
+function pick <K extends string>(...keys: K[]) {
   return function <T extends Partial<{ [P in K]: T[P] }>>(obj: T): Pick<T,K> {
     return keys.reduce(addEntry, {})
 
@@ -123,13 +113,13 @@ function selectEntries <K extends string>(...keys: K[]) {
   }
 }
 
-function delay <S>(source$: Observable<S>) {
+function lag <S>(source$: Observable<S>) {
   return function (timeout: number) {
-    return source$.delay(timeout)
+    return source$.pipe(delay(timeout))
   }
 }
 
-function merge <T>(...props: any[]): T {
+function shallowMerge <T>(...props: any[]): T {
   return Object.assign({}, ...props)
 }
 
@@ -137,14 +127,6 @@ function toEntry (key: string) {
   return function <T>(val: T) {
     return { [key]: val }
   }
-}
-
-function pluckDistinct<S> (
-  source$: Observable<S>,
-  key: keyof S,
-  comparator?: (a: any, b: any) => boolean
-) {
-  return source$.pluck(key).distinctUntilChanged(comparator)
 }
 
 /*

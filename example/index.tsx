@@ -14,23 +14,29 @@
 import createComponentFromStreamFactory from '../src'
 import { render, Component } from 'inferno'
 import { createElement } from 'inferno-create-element'
-import { Observable } from 'rxjs'
+import { from } from 'rxjs/observable/from'
+import { interval } from 'rxjs/observable/interval'
+import { of } from 'rxjs/observable/of'
 import CopyButton from './copy-button'
+import {
+  concat, defaultIfEmpty, ignoreElements, map, take, takeUntil, tap
+} from 'rxjs/operators';
 
 const componentFromStream = createComponentFromStreamFactory(
   Component,
-  Observable.from
+  from
 )
 const App = componentFromStream(renderApp, fromTimer)
 
 function fromTimer(props$) {
-  const timer$ = Observable.interval(1000)
-    .takeUntil(props$.last().do(log('last:'), log('error:'), log('done:')))
-    .map(time)
-    .take(8)
-    .concat(Observable.of(void 0)) // hide -> unmount children
+  const timer$ = interval(1000).pipe(
+    takeUntil(props$.pipe(ignoreElements(), defaultIfEmpty())),
+    map(time),
+    take(8),
+    concat(of(void 0)) // hide -> unmount children
+  )
 
-  return timer$.do(log('from-timer:'))
+  return timer$.pipe(tap(log('from-timer:')))
 }
 
 function time() {
@@ -41,8 +47,13 @@ function time() {
 function renderApp({ time }) {
   return (
     <div>
-      <CopyButton value={`A: ${time}`} />
-      <CopyButton value={`B: ${time}`} />
+      <p>
+				clock A: {time} <CopyButton value={`clock A: ${time}`} />
+			</p>
+			<br />
+			<p>
+				clock B: {time} <CopyButton value={`clock B: ${time}`} />
+			</p>
     </div>
   )
 }

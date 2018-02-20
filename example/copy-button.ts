@@ -18,13 +18,10 @@ import createComponentFromStreamFactory, {
   ComponentFromStreamConstructor
 } from '../src'
 import { VNode, Component } from 'inferno'
-import { Observable } from 'rxjs'
+import { from } from 'rxjs/observable/from'
 import { distinctUntilChanged } from 'rxjs/operators'
 
-const componentFromStream = createComponentFromStreamFactory(
-  Component,
-  Observable.from
-)
+const componentFromStream = createComponentFromStreamFactory(Component, from)
 
 export default componentFromStream<ButtonProps,ButtonProps>(
   renderButton,
@@ -33,6 +30,7 @@ export default componentFromStream<ButtonProps,ButtonProps>(
 ComponentFromStreamConstructor<VNode,Component<any,any>,CopyButtonProps,ButtonProps>
 
 function shallowEqual(a: any, b: any) {
+  if(a === b) { return true }
   const akeys = Object.keys(a)
   const bkeys = Object.keys(b)
 
