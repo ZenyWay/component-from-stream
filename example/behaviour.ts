@@ -51,7 +51,7 @@ interface OnClickProps {
 export default compose(
   tap(log('view-props:')),
   map(pick<keyof ButtonProps>('disabled', 'onClick', 'icon')),
-  map(withToggleIconWhenDisabled),
+  map(withIconFromDisabled),
   tap(log('with-toggle-disabled-on-success:')),
   withToggleDisabledOnSuccess,
   map(withCopyOnClick),
@@ -79,24 +79,18 @@ function copyOnClick(event, value) {
 function withToggleDisabledOnSuccess(props$) {
   const _props$ = props$.pipe(share())
   const timeout$ = _props$.pipe(pluck('timeout'), distinctUntilChanged())
-  const disable$ = _props$.pipe(
-    pluck('success'),
-    distinctUntilChanged(),
-    filter(Boolean),
-    share())
-  const enable$ = timeout$.pipe(
-    switchMap(lag(disable$)), // stateful
-    startWith(true))
-  const disabled$ = merge(
-    enable$.pipe(mapTo(false)),
-    disable$
-  )
-  .pipe(map(toEntry('disabled')))
+  const disable$ = _props$.pipe(pluck('success'), share())
+  const enable$ = timeout$.pipe(switchMap(lag(disable$)), startWith(true)) // stateful
+  const disabled$ = merge(enable$.pipe(mapTo(false)), disable$)
 
-  return combineLatest(_props$, disabled$, shallowMerge)
+  return combineLatest(
+    _props$,
+    disabled$.pipe(map(toProp('disabled'))),
+    shallowMerge
+  )
 }
 
-function withToggleIconWhenDisabled (props: any) {
+function withIconFromDisabled (props: any) {
   const { disabled = false, icons } = props
   const icon = disabled ? icons.disabled : icons.enabled
   return { ...props, disabled, icon }
@@ -123,7 +117,7 @@ function shallowMerge <T>(...props: any[]): T {
   return Object.assign({}, ...props)
 }
 
-function toEntry (key: string) {
+function toProp (key: string) {
   return function <T>(val: T) {
     return { [key]: val }
   }
