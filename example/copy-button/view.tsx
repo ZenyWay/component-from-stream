@@ -1,4 +1,5 @@
-/*
+/**
+ * @license
  * Copyright 2018 Stephane M. Catala
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,18 +12,18 @@
  * See the License for the specific language governing permissions and
  * Limitations under the License.
  */
-
+;
 import { VNode } from 'inferno'
 import { createElement } from 'inferno-create-element'
 
-export interface ButtonProps {
+export interface ButtonViewProps {
   disabled: boolean
   onClick: (event: any) => void
   icon
 }
 
 export default function render (
-  { disabled = false, onClick = false, icon = 'fa-question' }: ButtonProps
+  { disabled = false, onClick = false, icon = 'fa-question' }: ButtonViewProps
 ): VNode {
   return (
     <button

@@ -71,24 +71,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+;
 import createSubject, { Observable, Subscription } from 'rx-subject'
 import compose from './compose'
 
 export { compose }
 
-export type ComponentFromStreamFactory<N={},C={}> = <P={},Q={}>(
+export type ComponentFromStreamFactory<N={},C={}> = <P={},Q=P>(
   render: (props: Q) => N,
-  mapProps?: Operator<P, Q>
+  mapProps?: RxOperator<P, Q>
 ) => ComponentFromStreamConstructor<N, C, P, Q>
 
-export interface ComponentFromStreamConstructor<N={},C={},P={},Q={}> {
+export interface ComponentFromStreamConstructor<N={},C={},P={},Q=P> {
   new (props: P, context?: any): C & ComponentFromStream<N,P,Q>
   lift <R>(
     fromOwnProps: (props: Observable<R>) => Observable<P>
   ): ComponentFromStreamConstructor<N,C,R,Q>
 }
 
-export interface ComponentFromStream<N={},P={},Q={}>
+export interface ComponentFromStream<N={},P={},Q=P>
 extends Component<N,P,ViewPropsState<Q>> {
   props$: Observable<Readonly<P>>
   componentWillMount (): void
@@ -115,22 +116,22 @@ export interface ViewPropsState<Q> {
   viewProps: Q
 }
 
-export type Operator<I,O> = (props$: Observable<I>) => Observable<O>
+export type RxOperator<I,O> = (props$: Observable<I>) => Observable<O>
 
 export default function createComponentFromStreamFactory <N={},C={}>(
   ComponentCtor: new (props: any, context?: any) => C & Component<N,{},{}>,
   fromESObservable: <T>(stream: Observable<T>) => Observable<T>,
   toESObservable: <T>(stream: Observable<T>) => Observable<T> = identity
 ): ComponentFromStreamFactory<N,C> {
-  return function createComponentFromStream <P={},Q={}>(
+  return function createComponentFromStream <P,Q=P>(
     render: (props: Q) => N,
-    mapProps: Operator<P,Q> = identity as any
+    mapProps: RxOperator<P,Q> = identity as any
   ): ComponentFromStreamConstructor<N,C,P,Q> {
     return class ComponentFromStreamClass
     extends (ComponentCtor as ComponentConstructor<N,P>) // base class cannot be generic
     implements ComponentFromStream<N,P,Q> {
-      static lift <R>(op: Operator<R,P>): ComponentFromStreamConstructor<N, C, R, Q>
-      static lift <R>(...ops: Operator<any,any>[]) {
+      static lift <R=P>(op: RxOperator<R,P>): ComponentFromStreamConstructor<N, C, R, Q>
+      static lift <R=P>(...ops: RxOperator<any,any>[]) {
         return createComponentFromStream<R,Q>(render, compose(mapProps, ...ops))
       }
 

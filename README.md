@@ -27,22 +27,37 @@ within a component's reactive operator (behaviour).
 * a component renders null when it's reactive operator emits a falsy value
 instead of a `props` object to the rendering function.
 
-Observable libraries such as [`RxJS`](http://reactivex.io/rxjs/)
-provide a very rich set of reactive operators
-with which complex component behaviours can be implemented
-in a purely reactive way.
-this implementation focuses on the glue with which to connect reactive behaviour
+separation of behaviour from view has many advantages, among which:
+* state can typically be confined to within a small subset of behaviours.
+* views can be stateless and easily tested separately (e.g. with [storybook](https://storybook.js.org/))
+* straightforward unit testing:
+  * behaviours operate exclusively within streams of `props` = no DOM involved.
+  * unit testing development effort can focus on stateful unit behaviours,
+  stateless behaviours being straightforward to test.
+* a component's behaviour is mostly self-documenting.
+* behaviours are independent of rendering framework.
+* unit behaviours can be shared between components.
+* for a given view, an existing component's behaviour can be extended
+by composing it with additional unit behaviours.
+
+this module is deliberately limited to providing
+the glue with which to connect reactive behaviour
 with stateless rendering functions.
+Observable libraries such as [`RxJS`](http://reactivex.io/rxjs/)
+or [`MOST`](https://www.npmjs.com/package/most)
+provide a very rich set of reactive operators
+with which complex component behaviours can be implemented,
+in a purely reactive way.
 
 # Example
 see the full [example](./example/index.tsx) in this directory.
-run the example in your browser with `npm run example`.
+run the example in your browser locally with `npm run example`
+or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.4.0/example/index.html).
 
-this example is somewhat contrived, but should demonstrate
-how to implement a `component-from-stream`
-described in terms of its view and composed behaviour:
+this example demonstrates how to implement `component-from-stream` Components
+described in terms of their view and composed behaviour:
 
-`copy-button.ts`
+`copy-button/index.ts`
 ```ts
 import renderButton from './view'
 import withCopyButtonBehaviour from './behaviour'
@@ -52,6 +67,7 @@ import { distinctUntilChanged } from 'rxjs/operators'
 
 const componentFromStream = createComponentFromStreamFactory(Component, from)
 
+// create a reactive component from view and behaviour
 export default componentFromStream(
   renderButton,
   distinctUntilChanged(shallowEqual) // only render when necessary
@@ -60,21 +76,29 @@ export default componentFromStream(
 // ...
 ```
 
-`behaviour.ts`
+`copy-button/behaviour.ts`
 ```ts
+import { when, hasEvent, shallowMerge, pick, shallowEqual } from '../utils'
 import { compose } from 'component-from-stream'
 import withEventHandlerProps from 'rx-with-event-handler-props'
 import { map, tap } from 'rxjs/operators'
 
 export default compose(
-  tap(log('view-props:')),
-  map(pick('disabled', 'onClick', 'icon')),
-  map(withToggleIconWhenDisabled),
+  tap(log('copy-button:view-props:')),
+  map(into('icon')(iconFromDisabled)),
+  distinctUntilChanged(shallowEqual),
+  map(pick('disabled', 'onClick', 'icons')), // clean-up
   withToggleDisabledOnSuccess,
-  map(withCopyOnClick),
+  tap(log('copy-button:when-click-then-copy:')),
+  when(hasEvent('click'))(map(into('success')(doCopyToClipboard))),
   withEventHandlerProps('click'),
-  map(withDefaultProps)
+  map(shallowMerge(DEFAULT_PROPS)) // icons are not deep-copied
 )
+
+function doCopyToClipboard({ event, value }) {
+  event.payload.preventDefault()
+  return copyToClipboard(value) //true on success
+}
 
 // ...
 ```
@@ -87,21 +111,11 @@ and emits the extended `props` object whenever it receives a new input,
 or whenever the `onClick` handler is called (from the rendered `Component`).
 
 the resulting event can then be further processed by a downstream operator,
-e.g. `map(withCopyOnClick)`:
-```ts
-import copyToClipboard = require('clipboard-copy')
-...
-function withCopyOnClick (props: any) {
-  return !props || !props.event || props.event.id !== 'click'
-    ? props
-    : { ...props, success: copyOnClick(props.event.payload, props.value) }
-}
+e.g. `when(hasEvent('click'))(map(into('success')(doCopyToClipboard)))`.
 
-function copyOnClick(event, value) {
-  event.preventDefault()
-  return copyToClipboard(value) //true on success
-}
-```
+the unit behaviours are composed from bottom to top:
+`props` are processed from outside to inside,
+i.e. from component `props` to view `props`.
 
 # API
 the component factory is not directly exposed by this module:
@@ -121,19 +135,19 @@ declare function createComponentFromStreamFactory <N={},C={}>(
   toESObservable: <T>(stream: Observable<T>) => Observable<T> = identity
 ): ComponentFromStreamFactory<N,C>
 
-type ComponentFromStreamFactory<N={},C={}> = <P={},Q={}>(
+type ComponentFromStreamFactory<N={},C={}> = <P={},Q=P>(
   render: (props: Q) => N,
   mapProps?: Operator<P, Q>
 ) => ComponentFromStreamConstructor<N, C, P, Q>
 
-interface ComponentFromStreamConstructor<N={},C={},P={},Q={}> {
+interface ComponentFromStreamConstructor<N={},C={},P={},Q=P> {
   new (props: P, context?: any): C & ComponentFromStream<N,P,Q>
-  lift <R>(
+  lift <R=P>(
     fromOwnProps: (props: Observable<R>) => Observable<P>
   ): ComponentFromStreamConstructor<N,C,R,Q>
 }
 
-interface ComponentFromStream<N={},P={},Q={}> extends Component<N,P,{props?:Q}> {
+interface ComponentFromStream<N={},P={},Q=P> extends Component<N,P,{props?:Q}> {
   props$: Observable<Readonly<P>>
   componentWillMount (): void
   componentWillReceiveProps (nextProps: Readonly<P>, nextContext: any): void
@@ -164,3 +178,19 @@ although this library is written in [TypeScript](https://www.typescriptlang.org)
 it may also be imported into plain JavaScript code:
 modern code editors will still benefit from the available type definition,
 e.g. for helpful code completion.
+
+# License
+Copyright 2018 Stéphane M. Catala
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the [License](./LICENSE) for the specific language governing permissions and
+Limitations under the License.
+

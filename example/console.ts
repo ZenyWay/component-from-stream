@@ -13,16 +13,21 @@
  * Limitations under the License.
  */
 ;
-/**
- * @return an Operator that applies the given operators from right to left.
- */
-export default
-function compose<I,O>(...ops: ((val: any) => any)[]): (val: I) => O {
-  return function (val: I) {
-    return ops.reduceRight(apply, val)
-  }
-}
+declare const Terminal: any
 
-function apply(obj: any, fn: Function) {
-  return fn(obj)
+const term = new Terminal({
+  cursorBlink: true,
+  rows: 24,
+  scrollback: 48,
+  tabStopWidth: 2
+})
+
+term.open(document.querySelector('#console'))
+
+const stringify = JSON.stringify.bind(JSON)
+
+export default function log (this: void, label: string) {
+  return function (...args) {
+    term.writeln([label].concat(args.map(stringify)).join(' '))
+  }
 }

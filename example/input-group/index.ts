@@ -1,4 +1,5 @@
-/*
+/**
+ * @license
  * Copyright 2018 Stephane M. Catala
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,32 +12,22 @@
  * See the License for the specific language governing permissions and
  * Limitations under the License.
  */
-
-import renderButton, { ButtonProps } from './view'
-import withCopyButtonBehaviour, { CopyButtonProps } from './behaviour'
+;
+import InputGroupWithButton, { InputGroupViewProps } from './view'
+import withInputGroupBehaviour, { InputGroupWithButtonProps } from './behaviour'
+import { shallowEqual } from '../utils'
 import createComponentFromStreamFactory, {
   ComponentFromStreamConstructor
-} from '../src'
+} from '../../'
 import { VNode, Component } from 'inferno'
 import { from } from 'rxjs/observable/from'
 import { distinctUntilChanged } from 'rxjs/operators'
 
+
 const componentFromStream = createComponentFromStreamFactory(Component, from)
 
-export default componentFromStream<ButtonProps,ButtonProps>(
-  renderButton,
-  distinctUntilChanged<ButtonProps>(shallowEqual) // only render when necessary
-).lift<CopyButtonProps>(withCopyButtonBehaviour) as
-ComponentFromStreamConstructor<VNode,Component<any,any>,CopyButtonProps,ButtonProps>
-
-function shallowEqual(a: any, b: any) {
-  if(a === b) { return true }
-  const akeys = Object.keys(a)
-  const bkeys = Object.keys(b)
-
-  return akeys.length === bkeys.length && akeys.every(isEqualValues)
-
-  function isEqualValues (key: string) {
-    return a[key] === b[key]
-  }
-}
+export default componentFromStream<InputGroupViewProps>(
+  InputGroupWithButton,
+  distinctUntilChanged<InputGroupViewProps>(shallowEqual)
+).lift<InputGroupWithButtonProps>(withInputGroupBehaviour) as
+ComponentFromStreamConstructor<VNode,Component<any,any>,InputGroupWithButtonProps,InputGroupViewProps>
