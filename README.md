@@ -16,8 +16,6 @@ which maps the component's input stream of `props` to that of its rendering func
 * components expose a new `lift` class method for deriving new components
 with additional behaviour by composing the original component's reactive operator
 with additional reactive operators.
-* for convenience, this module also exposes its `compose` function
-for composing reactive operators.
 * the `props$` Observable from which a component streams its `props`
 automatically completes on `componentWillUnmount`,
 pushing life-cycle management into the component's reactive operator (behaviour).
@@ -52,7 +50,7 @@ in a purely reactive way.
 # Example
 see the full [example](./example/index.tsx) in this directory.
 run the example in your browser locally with `npm run example`
-or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.4.0/example/index.html).
+or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.5.0/example/index.html).
 
 this example demonstrates how to implement `component-from-stream` Components
 described in terms of their view and composed behaviour:
@@ -79,7 +77,7 @@ export default componentFromStream(
 `copy-button/behaviour.ts`
 ```ts
 import { when, hasEvent, shallowMerge, pick, shallowEqual } from '../utils'
-import { compose } from 'component-from-stream'
+import { compose } from 'basic-compose'
 import withEventHandlerProps from 'rx-with-event-handler-props'
 import { map, tap } from 'rxjs/operators'
 
@@ -164,13 +162,6 @@ interface Component<N={},P={},S={}> {
   props: Readonly<P>
   state: Readonly<S>
 }
-```
-
-this module also exposes its `compose` function for composing reactive operators:
-```ts
-declare function compose<I,O>(...ops: Operator<any,any>[]): Operator<I,O>
-
-type Operator<I,O> = (props$: Observable<I>) => Observable<O>
 ```
 
 # TypeScript

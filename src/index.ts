@@ -73,7 +73,7 @@
  */
 ;
 import createSubject, { Observable, Subscription } from 'rx-subject'
-import compose from './compose'
+import compose from 'basic-compose'
 
 export { compose }
 
