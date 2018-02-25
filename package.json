@@ -1,6 +1,6 @@
 {
   "name": "component-from-stream",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "create a React-like component that sources its props from an observable stream",
   "main": "dist/index.min.js",
   "typings": "dist/index.d.ts",
@@ -58,7 +58,7 @@
     "uglifyify": "^4.0.5"
   },
   "dependencies": {
-    "basic-compose": "^1.0.0",
+    "basic-compose": "^2.0.0",
     "rx-subject": "^1.1.0"
   }
 }

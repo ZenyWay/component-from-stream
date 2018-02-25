@@ -50,7 +50,7 @@ in a purely reactive way.
 # Example
 see the full [example](./example/index.tsx) in this directory.
 run the example in your browser locally with `npm run example`
-or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.5.0/example/index.html).
+or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.5.1/example/index.html).
 
 this example demonstrates how to implement `component-from-stream` Components
 described in terms of their view and composed behaviour:
@@ -77,7 +77,7 @@ export default componentFromStream(
 `copy-button/behaviour.ts`
 ```ts
 import { when, hasEvent, shallowMerge, pick, shallowEqual } from '../utils'
-import { compose } from 'basic-compose'
+import compose from 'basic-compose'
 import withEventHandlerProps from 'rx-with-event-handler-props'
 import { map, tap } from 'rxjs/operators'
 
