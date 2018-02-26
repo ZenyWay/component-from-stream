@@ -16,7 +16,7 @@
 import { InputGroupViewProps, AddonButton } from './view'
 import log from '../console'
 import { compose, RxOperator } from '../..'
-import withEventHandlerProps from 'rx-with-event-handler-props'
+import withEventHandler from 'rx-with-event-handler'
 import { into } from 'basic-cursors'
 import { pick, when, hasEvent } from '../utils'
 import { map, tap } from 'rxjs/operators'
@@ -35,10 +35,8 @@ const VIEW_PROPS = [
 
 export default compose(
   tap(log('input-group-with-button:view-props:')),
-  map(pick<keyof InputGroupViewProps>(...VIEW_PROPS)),
-  tap(log('input-group-with-button:map-event-into-value:')),
-  when(hasEvent('input'))(map(into('value')(valueFromInputEvent))),
-  withEventHandlerProps('input')
+  map(pick<keyof InputGroupViewProps>(...VIEW_PROPS)), // clean-up
+  withEventHandler('input')(map(into('value')(valueFromInputEvent)))
 ) as RxOperator<InputGroupWithButtonProps,InputGroupViewProps>
 
 function valueFromInputEvent({ event }) {

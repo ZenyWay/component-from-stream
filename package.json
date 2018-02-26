@@ -1,6 +1,6 @@
 {
   "name": "component-from-stream",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "create a React-like component that sources its props from an observable stream",
   "main": "dist/index.min.js",
   "typings": "dist/index.d.ts",
@@ -49,7 +49,7 @@
     "inferno": "^4.0.4",
     "inferno-create-element": "^4.0.4",
     "rimraf": "^2.6.2",
-    "rx-with-event-handler-props": "^1.1.1",
+    "rx-with-event-handler": "^1.0.0",
     "rxjs": "^5.5.6",
     "tsify": "^3.0.4",
     "tslint": "^5.9.1",

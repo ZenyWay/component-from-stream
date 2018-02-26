@@ -50,7 +50,7 @@ in a purely reactive way.
 # Example
 see the full [example](./example/index.tsx) in this directory.
 run the example in your browser locally with `npm run example`
-or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.5.1/example/index.html).
+or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.5.2/example/index.html).
 
 this example demonstrates how to implement `component-from-stream` Components
 described in terms of their view and composed behaviour:
@@ -76,20 +76,17 @@ export default componentFromStream(
 
 `copy-button/behaviour.ts`
 ```ts
-import { when, hasEvent, shallowMerge, pick, shallowEqual } from '../utils'
+import { shallowMerge, pick, log } from '../utils'
 import compose from 'basic-compose'
-import withEventHandlerProps from 'rx-with-event-handler-props'
+import withEventHandlerProps from 'rx-with-event-handler'
 import { map, tap } from 'rxjs/operators'
 
 export default compose(
   tap(log('copy-button:view-props:')),
   map(into('icon')(iconFromDisabled)),
-  distinctUntilChanged(shallowEqual),
-  map(pick('disabled', 'onClick', 'icons')), // clean-up
+  pickDistinct('disabled', 'onClick', 'icons'), // clean-up
   withToggleDisabledOnSuccess,
-  tap(log('copy-button:when-click-then-copy:')),
-  when(hasEvent('click'))(map(into('success')(doCopyToClipboard))),
-  withEventHandlerProps('click'),
+  withEventHandler('click')(map(into('success')(doCopyToClipboard))),
   map(shallowMerge(DEFAULT_PROPS)) // icons are not deep-copied
 )
 
@@ -98,22 +95,38 @@ function doCopyToClipboard({ event, value }) {
   return copyToClipboard(value) //true on success
 }
 
+function pickDistinct(...keys) {
+	return compose(distinctUntilChanged(shallowEqual), map(pick(...keys)))
+}
+
+function iconFromDisabled ({ disabled, icons }: any) {
+  return disabled ? icons.disabled : icons.enabled
+}
 // ...
 ```
 each argument supplied to the above `compose` function is a reactive operator
 which implements a specific unit behaviour by generating an output stream
 of `props` from an input stream of `props`.
-e.g. `withEventHandlerProps('click')` from [`rx-with-event-handler-props`](https://npmjs.com/package/rx-with-event-handler-props)
-adds two `props` (`onClick` and `event`)
-and emits the extended `props` object whenever it receives a new input,
-or whenever the `onClick` handler is called (from the rendered `Component`).
-
-the resulting event can then be further processed by a downstream operator,
-e.g. `when(hasEvent('click'))(map(into('success')(doCopyToClipboard)))`.
 
 the unit behaviours are composed from bottom to top:
 `props` are processed from outside to inside,
 i.e. from component `props` to view `props`.
+
+e.g. `withEventHandler('click')` from [`rx-with-event-handler`](https://npmjs.com/package/rx-with-event-handler/)
+adds an `onClick` prop and emits the extended `props` object
+whenever it receives a new input.
+whenever the `onClick` handler is called (from the rendered `Component`),
+it also adds an `event` prop to the emitted `props` object,
+and pipes the latter through the given event handler operator,
+in this case `map(into('success')(doCopyToClipboard))`,
+which copies the `value` prop to the clipboard
+and sets a `success` prop to `true` on success, `false` otherwise.
+
+the resulting event can then be further processed by a downstream operator,
+e.g. `withToggleDisabledOnSuccess`, which toggles the boolean `disabled` prop
+for a brief moment whenever the `success` prop turns `true`.
+[check the code](./example/copy-button/behaviour.ts#L64-L75)
+for implementation details of this operator.
 
 # API
 the component factory is not directly exposed by this module:

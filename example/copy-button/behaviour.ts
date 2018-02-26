@@ -25,7 +25,7 @@ import {
   delay, distinctUntilChanged, filter, map, mapTo, pluck, share, startWith,
   switchMap, tap
 } from 'rxjs/operators'
-import withEventHandlerProps from 'rx-with-event-handler-props'
+import withEventHandler from 'rx-with-event-handler'
 import copyToClipboard = require('clipboard-copy')
 
 export const DEFAULT_PROPS: CopyButtonProps = {
@@ -50,12 +50,9 @@ export interface ButtonIcons {
 export default compose(
   tap(log('copy-button:view-props:')),
   map(into('icon')(iconFromDisabled)),
-  distinctUntilChanged(shallowEqual),
-  map(pick('disabled', 'onClick', 'icons')), // clean-up
+  pickDistinct('disabled', 'onClick', 'icons'), // clean-up
   withToggleDisabledOnSuccess,
-  tap(log('copy-button:when-click-then-copy:')),
-  when(hasEvent('click'))(map(into('success')(doCopyToClipboard))),
-  withEventHandlerProps('click'),
+  withEventHandler('click')(map(into('success')(doCopyToClipboard))),
   map(shallowMerge(DEFAULT_PROPS)) // icons are not deep-copied
 ) as RxOperator<CopyButtonProps,ButtonViewProps>
 
@@ -76,6 +73,10 @@ function withToggleDisabledOnSuccess(props$) {
     disabled$.pipe(map(toProp('disabled'))),
     shallowMerge()
   )
+}
+
+function pickDistinct(...keys) {
+	return compose(distinctUntilChanged(shallowEqual), map(pick(...keys)))
 }
 
 function iconFromDisabled ({ disabled, icons }: any) {
