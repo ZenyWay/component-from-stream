@@ -49,6 +49,7 @@ export interface ButtonIcons {
 
 export default compose(
   tap(log('copy-button:view-props:')),
+  distinctUntilChanged<ButtonViewProps>(shallowEqual), // only render when necessary
   map(into('icon')(iconFromDisabled)),
   pickDistinct('disabled', 'onClick', 'icons'), // clean-up
   withToggleDisabledOnSuccess,

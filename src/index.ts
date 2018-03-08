@@ -73,9 +73,6 @@
  */
 ;
 import createSubject, { Observable, Subscription } from 'rx-subject'
-import compose from 'basic-compose'
-
-export { compose }
 
 export type ComponentFromStreamFactory<N={},C={}> = <P={},Q=P>(
   render: (props: Q) => N,
@@ -84,9 +81,6 @@ export type ComponentFromStreamFactory<N={},C={}> = <P={},Q=P>(
 
 export interface ComponentFromStreamConstructor<N={},C={},P={},Q=P> {
   new (props: P, context?: any): C & ComponentFromStream<N,P,Q>
-  lift <R>(
-    fromOwnProps: (props: Observable<R>) => Observable<P>
-  ): ComponentFromStreamConstructor<N,C,R,Q>
 }
 
 export interface ComponentFromStream<N={},P={},Q=P>
@@ -130,11 +124,6 @@ export default function createComponentFromStreamFactory <N={},C={}>(
     return class ComponentFromStreamClass
     extends (ComponentCtor as ComponentConstructor<N,P>) // base class cannot be generic
     implements ComponentFromStream<N,P,Q> {
-      static lift <R=P>(op: RxOperator<R,P>): ComponentFromStreamConstructor<N, C, R, Q>
-      static lift <R=P>(...ops: RxOperator<any,any>[]) {
-        return createComponentFromStream<R,Q>(render, compose(mapProps, ...ops))
-      }
-
       state = {} as Readonly<ViewPropsState<Q>> // view props
 
       props: Readonly<P> // own props

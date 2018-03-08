@@ -13,8 +13,8 @@ into the component factory it returns.
 the stateless rendering function (the component's view) is separated
 from the potentially stateful reactive operator (the component's behaviour)
 which maps the component's input stream of `props` to that of its rendering function.
-* components expose a new `lift` class method for deriving new components
-with additional behaviour by composing the original component's reactive operator
+* components with additional behaviour may be derived from existing components
+by composing the original component's reactive operator
 with additional reactive operators.
 * the `props$` Observable from which a component streams its `props`
 automatically completes on `componentWillUnmount`,
@@ -50,7 +50,7 @@ in a purely reactive way.
 # Example
 see the full [example](./example/index.tsx) in this directory.
 run the example in your browser locally with `npm run example`
-or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.5.2/example/index.html).
+or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.6.0/example/index.html).
 
 this example demonstrates how to implement `component-from-stream` Components
 described in terms of their view and composed behaviour:
@@ -66,23 +66,19 @@ import { distinctUntilChanged } from 'rxjs/operators'
 const componentFromStream = createComponentFromStreamFactory(Component, from)
 
 // create a reactive component from view and behaviour
-export default componentFromStream(
-  renderButton,
-  distinctUntilChanged(shallowEqual) // only render when necessary
-).lift(withCopyButtonBehaviour)
-
-// ...
+export default componentFromStream(renderButton, withCopyButtonBehaviour)
 ```
 
 `copy-button/behaviour.ts`
 ```ts
 import { shallowMerge, pick, log } from '../utils'
 import compose from 'basic-compose'
-import withEventHandlerProps from 'rx-with-event-handler'
+import withEventHandler from 'rx-with-event-handler'
 import { map, tap } from 'rxjs/operators'
 
 export default compose(
   tap(log('copy-button:view-props:')),
+  distinctUntilChanged(shallowEqual), // only render when necessary
   map(into('icon')(iconFromDisabled)),
   pickDistinct('disabled', 'onClick', 'icons'), // clean-up
   withToggleDisabledOnSuccess,
@@ -153,9 +149,6 @@ type ComponentFromStreamFactory<N={},C={}> = <P={},Q=P>(
 
 interface ComponentFromStreamConstructor<N={},C={},P={},Q=P> {
   new (props: P, context?: any): C & ComponentFromStream<N,P,Q>
-  lift <R=P>(
-    fromOwnProps: (props: Observable<R>) => Observable<P>
-  ): ComponentFromStreamConstructor<N,C,R,Q>
 }
 
 interface ComponentFromStream<N={},P={},Q=P> extends Component<N,P,{props?:Q}> {

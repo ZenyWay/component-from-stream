@@ -25,8 +25,4 @@ import { distinctUntilChanged } from 'rxjs/operators'
 
 const componentFromStream = createComponentFromStreamFactory(Component, from)
 
-export default componentFromStream<ButtonViewProps>(
-  renderButton,
-  distinctUntilChanged<ButtonViewProps>(shallowEqual) // only render when necessary
-).lift<CopyButtonProps>(withCopyButtonBehaviour) as
-ComponentFromStreamConstructor<VNode,Component<any,any>,CopyButtonProps,ButtonViewProps>
+export default componentFromStream(renderButton, withCopyButtonBehaviour)

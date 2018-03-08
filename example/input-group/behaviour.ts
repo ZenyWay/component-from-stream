@@ -18,8 +18,8 @@ import log from '../console'
 import { compose, RxOperator } from '../..'
 import withEventHandler from 'rx-with-event-handler'
 import { into } from 'basic-cursors'
-import { pick, when, hasEvent } from '../utils'
-import { map, tap } from 'rxjs/operators'
+import { pick, when, hasEvent, shallowEqual } from '../utils'
+import { distinctUntilChanged, map, tap } from 'rxjs/operators'
 
 export interface InputGroupWithButtonProps {
   type: string,
@@ -35,6 +35,7 @@ const VIEW_PROPS = [
 
 export default compose(
   tap(log('input-group-with-button:view-props:')),
+  distinctUntilChanged<InputGroupViewProps>(shallowEqual),
   map(pick<keyof InputGroupViewProps>(...VIEW_PROPS)), // clean-up
   withEventHandler('input')(map(into('value')(valueFromInputEvent)))
 ) as RxOperator<InputGroupWithButtonProps,InputGroupViewProps>
