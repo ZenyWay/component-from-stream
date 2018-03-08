@@ -74,10 +74,16 @@
 ;
 import createSubject, { Observable, Subscription } from 'rx-subject'
 
-export type ComponentFromStreamFactory<N={},C={}> = <P={},Q=P>(
-  render: (props: Q) => N,
-  mapProps?: RxOperator<P, Q>
-) => ComponentFromStreamConstructor<N, C, P, Q>
+export interface ComponentFromStreamFactory<N={},C={}> {
+  <P={},Q=P>(
+    render: (props: Q) => N,
+    behaviour?: RxOperator<P,Q>
+  ): ComponentFromStreamConstructor<N, C, P, Q>
+  <P={},A=P,Q=P>(
+    render: (props: Q) => N,
+    behaviour: Partial<BehaviourSpec<P,A,Q>>
+  ): ComponentFromStreamConstructor<N, C, P, Q>
+}
 
 export interface ComponentFromStreamConstructor<N={},C={},P={},Q=P> {
   new (props: P, context?: any): C & ComponentFromStream<N,P,Q>
@@ -85,7 +91,7 @@ export interface ComponentFromStreamConstructor<N={},C={},P={},Q=P> {
 
 export interface ComponentFromStream<N={},P={},Q=P>
 extends Component<N,P,ViewPropsState<Q>> {
-  props$: Observable<Readonly<P>>
+  _source$: Observable<Readonly<P>>
   componentWillMount (): void
   componentWillReceiveProps (nextProps: Readonly<P>, nextContext: any): void
   componentWillUnmount (): void
@@ -107,8 +113,16 @@ export interface Component<N={},P={},S={}> {
 }
 
 export interface ViewPropsState<Q> {
-  viewProps: Q
+  props: Q
 }
+
+export interface BehaviourSpec<P,A,Q> {
+  dispatcher: PropsDispatcherFactory<P,A>
+  operator?: RxOperator<A,Q>
+}
+
+export type PropsDispatcherFactory<P,A> =
+(dispatch: (v: A) => void) => (props: P) => void
 
 export type RxOperator<I,O> = (props$: Observable<I>) => Observable<O>
 
@@ -119,8 +133,13 @@ export default function createComponentFromStreamFactory <N={},C={}>(
 ): ComponentFromStreamFactory<N,C> {
   return function createComponentFromStream <P,Q=P>(
     render: (props: Q) => N,
-    mapProps: RxOperator<P,Q> = identity as any
+    behaviour: RxOperator<P,Q>|Partial<BehaviourSpec<P,any,Q>> = identity as any
   ): ComponentFromStreamConstructor<N,C,P,Q> {
+    const {
+      dispatcher = identity as PropsDispatcherFactory<P,any>,
+      operator = identity as RxOperator<any,Q>
+    } = isFunction(behaviour) ? { operator: behaviour } : behaviour
+
     return class ComponentFromStreamClass
     extends (ComponentCtor as ComponentConstructor<N,P>) // base class cannot be generic
     implements ComponentFromStream<N,P,Q> {
@@ -128,46 +147,52 @@ export default function createComponentFromStreamFactory <N={},C={}>(
 
       props: Readonly<P> // own props
 
-      private _props = createSubject<Readonly<P>>()
+      private _dispatcher = createSubject<Readonly<P>>()
 
-      props$ = this._props.source$
+      _source$ = this._dispatcher.source$
+
+      _onProps = dispatcher(this._dispatcher.sink.next)
 
       render() {
-        return !this.state.viewProps ? null : render(this.state.viewProps)
+        return !this.state.props ? null : render(this.state.props)
       }
 
       componentWillMount() {
-        this._subscription = this._viewProps$.subscribe(
-          this._setViewProps,
+        this._subscription = this._props$.subscribe(
+          this._setProps,
           this._unsubscribe,
           this._unsubscribe
         )
-        this._props.sink.next(this.props)
+        this._onProps(this.props)
       }
 
       componentWillReceiveProps(nextProps: Readonly<P>) {
-        this._props.sink.next(nextProps)
+        this._onProps(nextProps)
       }
 
       componentWillUnmount () {
-        this._props.sink.complete()
+        this._dispatcher.sink.complete()
       }
 
       shouldComponentUpdate(_: any, nextState: Readonly<ViewPropsState<Q>>) {
-        return nextState.viewProps !== this.state.viewProps
+        return nextState.props !== this.state.props
       }
 
       private _subscription: Subscription
 
       private _unsubscribe = () => this._subscription.unsubscribe()
 
-      private _setViewProps =
-        (viewProps: Readonly<Q>) => this.setState({ viewProps })
+      private _setProps =
+        (props: Readonly<Q>) => this.setState({ props })
 
       // not shared: simultaneously subscribed at most once (when mounted)
-      private _viewProps$ = toESObservable(mapProps(fromESObservable(this.props$)))
+      private _props$ = toESObservable(operator(fromESObservable(this._source$)))
     } as any // retrofit back generic from base class
   }
+}
+
+function isFunction (v: any): v is Function {
+  return typeof v === 'function'
 }
 
 function identity <T>(val: T): T {

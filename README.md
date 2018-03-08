@@ -22,6 +22,12 @@ within a component's reactive operator (behaviour).
 * a component renders null when it's reactive operator emits a falsy value
 instead of a `props` object to the rendering function.
 
+another enhancement worth highlighting is the backward-compatible
+instantiation of a `component-from_stream` using a custom input dispatcher,
+that maps props before dispatching into the reactive operator, e.g. into actions.
+see [`with-event-handlers`](https://npmjs.com/package/with-event-handlers/)
+for a corresponding example.
+
 separation of behaviour from view has many advantages, among which:
 * state can typically be confined to within a small subset of behaviours.
 * views can be stateless and easily tested separately (e.g. with [storybook](https://storybook.js.org/))
@@ -47,7 +53,7 @@ in a purely reactive way.
 # Example
 see the full [example](./example/index.tsx) in this directory.
 run the example in your browser locally with `npm run example`
-or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.6.2/example/index.html).
+or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.7.0/example/index.html).
 
 this example demonstrates how to implement `component-from-stream` Components
 described in terms of their view and composed behaviour:
@@ -89,7 +95,7 @@ function doCopyToClipboard({ event, value }) {
 }
 
 function pickDistinct(...keys) {
-	return compose(distinctUntilChanged(shallowEqual), map(pick(...keys)))
+  return compose(distinctUntilChanged(shallowEqual), map(pick(...keys)))
 }
 
 function iconFromDisabled ({ disabled, icons }: any) {
@@ -132,39 +138,74 @@ or [`MOST`](https://www.npmjs.com/package/most).
 
 this higher-level factory returns the required component factory
 after injection of the supplied dependencies.
+
+the above example illustrates the traditional instatiation of a `component-from-stream`,
+with a reactive operator that maps incoming props to view props.
+this module introduces a new backward-compatible instantiation of a `component-from_stream` using a custom input dispatcher,
+that maps props before dispatching into the reactive operator, e.g. into actions.
+this may be used for example for integrating action-based reactive reducers,
+whereby the dispatcher maps props to actions.
+see [`with-event-handlers`](https://npmjs.com/package/with-event-handlers/)
+for a corresponding example.
+
 ```ts
-declare function createComponentFromStreamFactory <N={},C={}>(
-  ComponentCtor: new (props: any, context?: any) => C & Component<N,{},{}>,
+export default function createComponentFromStreamFactory<N = {}, C = {}>(
+  ComponentCtor: new (props: any, context?: any) => C & Component<N, {}, {}>,
   fromESObservable: <T>(stream: Observable<T>) => Observable<T>,
-  toESObservable: <T>(stream: Observable<T>) => Observable<T> = identity
-): ComponentFromStreamFactory<N,C>
+  toESObservable?: <T>(stream: Observable<T>) => Observable<T>
+): ComponentFromStreamFactory<N, C>
 
-type ComponentFromStreamFactory<N={},C={}> = <P={},Q=P>(
-  render: (props: Q) => N,
-  mapProps?: Operator<P, Q>
-) => ComponentFromStreamConstructor<N, C, P, Q>
-
-interface ComponentFromStreamConstructor<N={},C={},P={},Q=P> {
-  new (props: P, context?: any): C & ComponentFromStream<N,P,Q>
+export interface ComponentFromStreamFactory<N = {}, C = {}> {
+  <P = {}, Q = P>(
+    render: (props: Q) => N,
+    behaviour?: RxOperator<P, Q>
+  ): ComponentFromStreamConstructor<N, C, P, Q>
+  <P = {}, A = P, Q = P>(
+    render: (props: Q) => N,
+    behaviour: Partial<BehaviourSpec<P, A, Q>>
+  ): ComponentFromStreamConstructor<N, C, P, Q>
 }
 
-interface ComponentFromStream<N={},P={},Q=P> extends Component<N,P,{props?:Q}> {
-  props$: Observable<Readonly<P>>
-  componentWillMount (): void
-  componentWillReceiveProps (nextProps: Readonly<P>, nextContext: any): void
-  componentWillUnmount (): void
+export interface ComponentFromStreamConstructor<N = {}, C = {}, P = {}, Q = P> {
+  new (props: P, context?: any): C & ComponentFromStream<N, P, Q>
 }
 
-interface ComponentConstructor<N={},P={}> {
-  new (props: P, context?: any): Component<N,{},{}>
+export interface ComponentFromStream<N = {}, P = {}, Q = P>
+  extends Component<N, P, ViewPropsState<Q>> {
+    _source$: Observable<Readonly<P>>
+    componentWillMount(): void;
+    componentWillReceiveProps(nextProps: Readonly<P>, nextContext: any): void
+    componentWillUnmount(): void
+    shouldComponentUpdate(
+      nextProps: Readonly<P>,
+      nextState: Readonly<ViewPropsState<Q>>
+    ): boolean
 }
 
-interface Component<N={},P={},S={}> {
-  setState<K extends keyof S> (state: Pick<S, K> | S, cb?: () => void): void
+export interface ComponentConstructor<N = {}, P = {}> {
+  new (props: P, context?: any): Component<N, {}, {}>
+}
+
+export interface Component<N = {}, P = {}, S = {}> {
+  setState<K extends keyof S>(state: Pick<S, K> | S, cb?: () => void): void
   render(): N
   props: Readonly<P>
   state: Readonly<S>
 }
+
+export interface ViewPropsState<Q> {
+  props: Q
+}
+
+export interface BehaviourSpec<P, A, Q> {
+  dispatcher: PropsDispatcherFactory<P, A>
+  operator?: RxOperator<A, Q>
+}
+
+export declare type PropsDispatcherFactory<P, A> =
+  (dispatch: (v: A) => void) => (props: P) => void
+
+export declare type RxOperator<I, O> = (props$: Observable<I>) => Observable<O>
 ```
 
 # TypeScript
