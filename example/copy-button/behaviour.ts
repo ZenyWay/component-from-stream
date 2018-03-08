@@ -14,9 +14,10 @@
  */
 ;
 import { ButtonViewProps } from './view'
-import { compose, RxOperator } from '../..'
+import { RxOperator } from '../..'
 import { when, hasEvent, shallowMerge, pick, toProp, shallowEqual } from '../utils'
 import log from '../console'
+import compose from 'basic-compose'
 import { into } from 'basic-cursors'
 import { Observable } from 'rxjs/Observable'
 import { combineLatest } from 'rxjs/observable/combineLatest'

@@ -26,8 +26,4 @@ import { distinctUntilChanged } from 'rxjs/operators'
 
 const componentFromStream = createComponentFromStreamFactory(Component, from)
 
-export default componentFromStream<InputGroupViewProps>(
-  InputGroupWithButton,
-  distinctUntilChanged<InputGroupViewProps>(shallowEqual)
-).lift<InputGroupWithButtonProps>(withInputGroupBehaviour) as
-ComponentFromStreamConstructor<VNode,Component<any,any>,InputGroupWithButtonProps,InputGroupViewProps>
+export default componentFromStream( InputGroupWithButton, withInputGroupBehaviour)
