@@ -13,9 +13,6 @@ into the component factory it returns.
 the stateless rendering function (the component's view) is separated
 from the potentially stateful reactive operator (the component's behaviour)
 which maps the component's input stream of `props` to that of its rendering function.
-* components with additional behaviour may be derived from existing components
-by composing the original component's reactive operator
-with additional reactive operators.
 * the `props$` Observable from which a component streams its `props`
 automatically completes on `componentWillUnmount`,
 pushing life-cycle management into the component's reactive operator (behaviour).
