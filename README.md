@@ -141,7 +141,9 @@ after injection of the supplied dependencies.
 
 the above example illustrates the traditional instatiation of a `component-from-stream`,
 with a reactive operator that maps incoming props to view props.
-this module introduces a new backward-compatible instantiation of a `component-from_stream` using a custom input dispatcher,
+
+this module introduces a new backward-compatible instantiation
+of a `component-from-stream` using a custom input dispatcher,
 that maps props before dispatching into the reactive operator, e.g. into actions.
 this may be used for example for integrating action-based reactive reducers,
 whereby the dispatcher maps props to actions.
@@ -172,7 +174,6 @@ export interface ComponentFromStreamConstructor<N = {}, C = {}, P = {}, Q = P> {
 
 export interface ComponentFromStream<N = {}, P = {}, Q = P>
   extends Component<N, P, ViewPropsState<Q>> {
-    _source$: Observable<Readonly<P>>
     componentWillMount(): void;
     componentWillReceiveProps(nextProps: Readonly<P>, nextContext: any): void
     componentWillUnmount(): void
@@ -203,7 +204,7 @@ export interface BehaviourSpec<P, A, Q> {
 }
 
 export declare type PropsDispatcherFactory<P, A> =
-  (dispatch: (v: A) => void) => (props: P) => void
+  (dispatch: (v: A) => void, source$?: Observable<A>) => (props: P) => void
 
 export declare type RxOperator<I, O> = (props$: Observable<I>) => Observable<O>
 ```

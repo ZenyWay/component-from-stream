@@ -117,12 +117,12 @@ export interface ViewPropsState<Q> {
 }
 
 export interface BehaviourSpec<P,A,Q> {
-  dispatcher: PropsDispatcherFactory<P,A>
+  dispatcher: DispatcherFactory<P,A>
   operator?: RxOperator<A,Q>
 }
 
-export type PropsDispatcherFactory<P,A> =
-(dispatch: (v: A) => void) => (props: P) => void
+export type DispatcherFactory<P,A=P> =
+(dispatch: (v: A) => void, source$?: Observable<A>) => (props: P) => void
 
 export type RxOperator<I,O> = (props$: Observable<I>) => Observable<O>
 
@@ -136,7 +136,7 @@ export default function createComponentFromStreamFactory <N={},C={}>(
     behaviour: RxOperator<P,Q>|Partial<BehaviourSpec<P,any,Q>> = identity as any
   ): ComponentFromStreamConstructor<N,C,P,Q> {
     const {
-      dispatcher = identity as PropsDispatcherFactory<P,any>,
+      dispatcher = identity as DispatcherFactory<P,any>,
       operator = identity as RxOperator<any,Q>
     } = isFunction(behaviour) ? { operator: behaviour } : behaviour
 
@@ -151,7 +151,7 @@ export default function createComponentFromStreamFactory <N={},C={}>(
 
       _source$ = this._dispatcher.source$
 
-      _onProps = dispatcher(this._dispatcher.sink.next)
+      _onProps = dispatcher(this._dispatcher.sink.next, this._dispatcher.source$)
 
       render() {
         return !this.state.props ? null : render(this.state.props)
