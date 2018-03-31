@@ -149,7 +149,7 @@ export default function createComponentFromStreamFactory <N={},C={}>(
 
       private _dispatcher = createSubject<Readonly<P>>()
 
-      _source$ = this._dispatcher.source$
+      _source$ = fromESObservable(this._dispatcher.source$)
 
       _onProps = dispatcher(this._dispatcher.sink.next, this._dispatcher.source$)
 
@@ -186,7 +186,7 @@ export default function createComponentFromStreamFactory <N={},C={}>(
         (props: Readonly<Q>) => this.setState({ props })
 
       // not shared: simultaneously subscribed at most once (when mounted)
-      private _props$ = toESObservable(operator(fromESObservable(this._source$)))
+      private _props$ = toESObservable(operator(this._source$))
     } as any // retrofit back generic from base class
   }
 }
