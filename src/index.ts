@@ -151,7 +151,7 @@ export default function createComponentFromStreamFactory <N={},C={}>(
 
       _source$ = fromESObservable(this._dispatcher.source$)
 
-      _onProps = dispatcher(this._dispatcher.sink.next, this._dispatcher.source$)
+      _onProps = dispatcher(this._dispatcher.sink.next, this._source$)
 
       render() {
         return !this.state.props ? null : render(this.state.props)
