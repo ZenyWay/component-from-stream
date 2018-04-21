@@ -18,12 +18,15 @@ import withInputGroupBehaviour, { InputGroupWithButtonProps } from './behaviour'
 import { shallowEqual } from '../utils'
 import createComponentFromStreamFactory, {
   ComponentFromStreamConstructor
-} from '../../'
+} from '../../src'
 import { VNode, Component } from 'inferno'
 import { from } from 'rxjs/observable/from'
 import { distinctUntilChanged } from 'rxjs/operators'
 
-
 const componentFromStream = createComponentFromStreamFactory(Component, from)
 
-export default componentFromStream( InputGroupWithButton, withInputGroupBehaviour)
+export default componentFromStream(
+  InputGroupWithButton,
+  withInputGroupBehaviour,
+  { 'from-stream-only': true }
+)

@@ -72,17 +72,28 @@
  * SOFTWARE.
  */
 ;
-import createSubject, { Observable, Subscription } from 'rx-subject'
+import createSubject, { Subscribable, Subscription } from 'rx-subject'
 
 export interface ComponentFromStreamFactory<N={},C={}> {
   <P={},Q=P>(
     render: (props: Q) => N,
-    behaviour?: RxOperator<P,Q>
+    opts?: Partial<ComponentFromStreamOptions>
+  ): ComponentFromStreamConstructor<N, C, P, Q>
+  <P={},Q=P>(
+    render: (props: Q) => N,
+    operator: Operator<P,Q>,
+    opts?: Partial<ComponentFromStreamOptions>
   ): ComponentFromStreamConstructor<N, C, P, Q>
   <P={},A=P,Q=P>(
     render: (props: Q) => N,
-    behaviour: Partial<BehaviourSpec<P,A,Q>>
+    operator: Operator<P,Q>,
+    onProps: PropsDispatcherFactory<P,A>,
+    opts?: Partial<ComponentFromStreamOptions>
   ): ComponentFromStreamConstructor<N, C, P, Q>
+}
+
+export interface ComponentFromStreamOptions {
+  'from-stream-only': boolean
 }
 
 export interface ComponentFromStreamConstructor<N={},C={},P={},Q=P> {
@@ -91,7 +102,7 @@ export interface ComponentFromStreamConstructor<N={},C={},P={},Q=P> {
 
 export interface ComponentFromStream<N={},P={},Q=P>
 extends Component<N,P,ViewPropsState<Q>> {
-  _source$: Observable<Readonly<P>>
+  _source$: Subscribable<Readonly<P>>
   componentWillMount (): void
   componentWillReceiveProps (nextProps: Readonly<P>, nextContext: any): void
   componentWillUnmount (): void
@@ -116,29 +127,27 @@ export interface ViewPropsState<Q> {
   props: Q
 }
 
-export interface BehaviourSpec<P,A,Q> {
-  dispatcher: DispatcherFactory<P,A>
-  operator?: RxOperator<A,Q>
-}
+export type Operator<I,O> = <S extends Subscribable<I>,T extends Subscribable<O>>
+  (source$: S, next?: (val: I) => void) => T
 
-export type DispatcherFactory<P,A=P> =
-(dispatch: (v: A) => void, source$?: Observable<A>) => (props: P) => void
+export type PropsDispatcherFactory<P,A=P> = <S extends Subscribable<A>>
+  (dispatch: (v: A) => void, source$?: S) => (props: P) => void
 
-export type RxOperator<I,O> = (props$: Observable<I>) => Observable<O>
+export { Subscribable }
 
 export default function createComponentFromStreamFactory <N={},C={}>(
   ComponentCtor: new (props: any, context?: any) => C & Component<N,{},{}>,
-  fromESObservable: <T>(stream: Observable<T>) => Observable<T>,
-  toESObservable: <T>(stream: Observable<T>) => Observable<T> = identity
+  fromESObservable: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
+  toESObservable: <T, O extends Subscribable<T>>(stream: O) => Subscribable<T> = identity
 ): ComponentFromStreamFactory<N,C> {
   return function createComponentFromStream <P,Q=P>(
-    render: (props: Q) => N,
-    behaviour: RxOperator<P,Q>|Partial<BehaviourSpec<P,any,Q>> = identity as any
+    render: (props: Q) => N
   ): ComponentFromStreamConstructor<N,C,P,Q> {
-    const {
-      dispatcher = identity as DispatcherFactory<P,any>,
-      operator = identity as RxOperator<any,Q>
-    } = isFunction(behaviour) ? { operator: behaviour } : behaviour
+    const op = argv(arguments, 1, isFunction, <Operator<P,Q>>identity)
+    const onProps =
+      argv(arguments, 2, isFunction, <PropsDispatcherFactory<P,any>>identity)
+    const opts =
+      argv(arguments, -1, isObject, <Partial<ComponentFromStreamOptions>>{})
 
     return class ComponentFromStreamClass
     extends (ComponentCtor as ComponentConstructor<N,P>) // base class cannot be generic
@@ -151,7 +160,7 @@ export default function createComponentFromStreamFactory <N={},C={}>(
 
       _source$ = fromESObservable(this._dispatcher.source$)
 
-      _onProps = dispatcher(this._dispatcher.sink.next, this._source$)
+      _onProps = onProps(this._dispatcher.sink.next, this._source$)
 
       render() {
         return !this.state.props ? null : render(this.state.props)
@@ -186,9 +195,31 @@ export default function createComponentFromStreamFactory <N={},C={}>(
         (props: Readonly<Q>) => this.setState({ props })
 
       // not shared: simultaneously subscribed at most once (when mounted)
-      private _props$ = toESObservable(operator(this._source$))
+      private _props$ = toESObservable(
+        !opts['from-stream-only']
+          ? op(this._source$, this._dispatcher.sink.next)
+          : op(this._source$)
+      )
     } as any // retrofit back generic from base class
   }
+}
+
+type Predicate = (v: any) => boolean
+
+function argv <T>(
+  args: IArguments,
+  index: number,
+  predicate: Predicate,
+  fallback: T
+): T {
+  const i = index < 0 ? args.length + index : index
+  return (i >= 0) && (args.length > i) && predicate(args[i])
+    ? args[i]
+    : fallback
+}
+
+function isObject (val: any): val is Object {
+  return !!val && (typeof val === 'object')
 }
 
 function isFunction (v: any): v is Function {

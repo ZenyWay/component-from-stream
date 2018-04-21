@@ -23,7 +23,7 @@ export interface ButtonViewProps {
 }
 
 export default function render (
-  { disabled = false, onClick = false, icon = 'fa-question' }: ButtonViewProps
+  { disabled = false, onClick, icon = 'fa-question' }: ButtonViewProps
 ): VNode {
   return (
     <button

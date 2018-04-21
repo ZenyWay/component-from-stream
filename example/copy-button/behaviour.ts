@@ -14,7 +14,7 @@
  */
 ;
 import { ButtonViewProps } from './view'
-import { RxOperator } from '../..'
+import { Operator } from '../../src'
 import { when, hasEvent, shallowMerge, pick, toProp, shallowEqual } from '../utils'
 import log from '../console'
 import compose from 'basic-compose'
@@ -56,7 +56,7 @@ export default compose(
   withToggleDisabledOnSuccess,
   withEventHandler('click')(map(into('success')(doCopyToClipboard))),
   map(shallowMerge(DEFAULT_PROPS)) // icons are not deep-copied
-) as RxOperator<CopyButtonProps,ButtonViewProps>
+) as Operator<CopyButtonProps,ButtonViewProps>
 
 function doCopyToClipboard({ event, value }) {
   event.payload.preventDefault()

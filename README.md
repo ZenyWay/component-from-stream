@@ -53,7 +53,7 @@ in a purely reactive way.
 # Example
 see the full [example](./example/index.tsx) in this directory.
 run the example in your browser locally with `npm run example`
-or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.7.0/example/index.html).
+or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.10.0/example/index.html).
 
 this example demonstrates how to implement `component-from-stream` Components
 described in terms of their view and composed behaviour:
@@ -142,30 +142,45 @@ after injection of the supplied dependencies.
 the above example illustrates the traditional instatiation of a `component-from-stream`,
 with a reactive operator that maps incoming props to view props.
 
-this module introduces a new backward-compatible instantiation
-of a `component-from-stream` using a custom input dispatcher,
-that maps props before dispatching into the reactive operator, e.g. into actions.
-this may be used for example for integrating action-based reactive reducers,
-whereby the dispatcher maps props to actions.
-see [`with-event-handlers`](https://npmjs.com/package/with-event-handlers/)
-for a corresponding example.
+the component factory may be given additional optional arguments:
+* `onProps` dispatcher: a function that maps incoming props before dispatching,
+e.g. to dispatch an FSA object with props as payload into the `operator`.
+* an options object
+
+the options object is currently limited to the `from-stream-only` property:
+when true, the `operator` will only receive the input `source$` stream,
+instead of both the stream and the dispatch function.
 
 ```ts
+import { Subscribable } from 'rx-subject'
+export { Subscribable }
+
 export default function createComponentFromStreamFactory<N = {}, C = {}>(
   ComponentCtor: new (props: any, context?: any) => C & Component<N, {}, {}>,
-  fromESObservable: <T>(stream: Observable<T>) => Observable<T>,
-  toESObservable?: <T>(stream: Observable<T>) => Observable<T>
+  fromESObservable: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
+  toESObservable?: <T, O extends Subscribable<T>>(stream: O) => Subscribable<T>
 ): ComponentFromStreamFactory<N, C>
 
 export interface ComponentFromStreamFactory<N = {}, C = {}> {
   <P = {}, Q = P>(
     render: (props: Q) => N,
-    behaviour?: RxOperator<P, Q>
+    opts?: Partial<ComponentFromStreamOptions>
+  ): ComponentFromStreamConstructor<N, C, P, Q>
+  <P = {}, Q = P>(
+    render: (props: Q) => N,
+    operator: Operator<P, Q>,
+    opts?: Partial<ComponentFromStreamOptions>
   ): ComponentFromStreamConstructor<N, C, P, Q>
   <P = {}, A = P, Q = P>(
     render: (props: Q) => N,
-    behaviour: Partial<BehaviourSpec<P, A, Q>>
+    operator: Operator<P, Q>,
+    onProps: PropsDispatcherFactory<P, A>,
+    opts?: Partial<ComponentFromStreamOptions>
   ): ComponentFromStreamConstructor<N, C, P, Q>
+}
+
+export interface ComponentFromStreamOptions {
+  'from-stream-only': boolean
 }
 
 export interface ComponentFromStreamConstructor<N = {}, C = {}, P = {}, Q = P> {
@@ -174,7 +189,8 @@ export interface ComponentFromStreamConstructor<N = {}, C = {}, P = {}, Q = P> {
 
 export interface ComponentFromStream<N = {}, P = {}, Q = P>
   extends Component<N, P, ViewPropsState<Q>> {
-    componentWillMount(): void;
+    _source$: Subscribable<Readonly<P>>
+    componentWillMount(): void
     componentWillReceiveProps(nextProps: Readonly<P>, nextContext: any): void
     componentWillUnmount(): void
     shouldComponentUpdate(
@@ -198,15 +214,17 @@ export interface ViewPropsState<Q> {
   props: Q
 }
 
-export interface BehaviourSpec<P, A, Q> {
-  dispatcher: PropsDispatcherFactory<P, A>
-  operator?: RxOperator<A, Q>
-}
+export declare type Operator<I, O> =
+  <S extends Subscribable<I>, T extends Subscribable<O>>(
+    source$: S,
+    next?: (val: I) => void
+  ) => T
 
-export declare type PropsDispatcherFactory<P, A> =
-  (dispatch: (v: A) => void, source$?: Observable<A>) => (props: P) => void
-
-export declare type RxOperator<I, O> = (props$: Observable<I>) => Observable<O>
+export declare type PropsDispatcherFactory<P, A = P> =
+  <S extends Subscribable<A>>(
+    dispatch: (v: A) => void,
+    source$?: S
+  ) => (props: P) => void
 ```
 
 # TypeScript
