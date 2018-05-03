@@ -13,20 +13,10 @@
  * Limitations under the License.
  */
 ;
-import renderButton, { ButtonViewProps } from './view'
-import withCopyButtonBehaviour, { CopyButtonProps } from './behaviour'
-import { shallowEqual } from '../utils'
-import createComponentFromStreamFactory, {
-  ComponentFromStreamConstructor
-} from '../../src'
-import { VNode, Component } from 'inferno'
-import { from } from 'rxjs/observable/from'
-import { distinctUntilChanged } from 'rxjs/operators'
+import renderButton from './view'
+import copyButtonBehaviour from './behaviour'
+import componentFromStream, {
+  ComponentFromStreamConstructor, Component, InfernoChildren
+} from '../component-from-stream'
 
-const componentFromStream = createComponentFromStreamFactory(Component, from)
-
-export default componentFromStream(
-  renderButton,
-  withCopyButtonBehaviour,
-  { 'from-stream-only': true }
-)
+export default componentFromStream(renderButton, copyButtonBehaviour)

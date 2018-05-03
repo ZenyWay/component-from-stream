@@ -38,7 +38,8 @@ export default compose(
   tap(log('input-group-with-button:view-props:')),
   distinctUntilChanged<InputGroupViewProps>(shallowEqual),
   map(pick<keyof InputGroupViewProps>(...VIEW_PROPS)), // clean-up
-  withEventHandler('input')(map(into('value')(valueFromInputEvent)))
+  withEventHandler('input')(<any>map(into('value')(valueFromInputEvent))),
+  tap(log('input-group-with-button:props:')),
 ) as Operator<InputGroupWithButtonProps,InputGroupViewProps>
 
 function valueFromInputEvent({ event }) {

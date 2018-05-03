@@ -47,8 +47,6 @@ export default function renderInputGroupWithButton({
       {ButtonAddon}
       <input
         type={type}
-        autocomplete="off"
-        autocorrect="off"
         placeholder={placeholder}
         value={value}
         onInput={onInput}

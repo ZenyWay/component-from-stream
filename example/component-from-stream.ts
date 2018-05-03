@@ -13,10 +13,15 @@
  * Limitations under the License.
  */
 ;
-import InputGroupWithButton from './view'
-import withInputGroupBehaviour from './behaviour'
-import componentFromStream, {
-  ComponentFromStreamConstructor, Component, InfernoChildren
-} from '../component-from-stream'
+import createComponentFromStreamFactory, {
+  ComponentFromStreamFactory, ComponentFromStreamConstructor
+} from '../src'
+import { InfernoChildren, Component } from 'inferno'
+import { from } from 'rxjs'
 
-export default componentFromStream(InputGroupWithButton, withInputGroupBehaviour)
+export { ComponentFromStreamFactory, ComponentFromStreamConstructor, Component, InfernoChildren }
+
+export default createComponentFromStreamFactory<Component<any,any>,InfernoChildren>(
+  Component,
+  from
+)

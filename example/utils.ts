@@ -13,9 +13,8 @@
  * Limitations under the License.
  */
 ;
-import { merge } from 'rxjs/observable/merge'
+import { Observable, merge } from 'rxjs'
 import { partition } from 'rxjs/operators'
-import { Observable } from 'rxjs/Observable'
 
 export type RxOperator<I,O> = ($: Observable<I>) => Observable<O>
 

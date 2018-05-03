@@ -15,13 +15,11 @@
 ;
 import { ButtonViewProps } from './view'
 import { Operator } from '../../src'
-import { when, hasEvent, shallowMerge, pick, toProp, shallowEqual } from '../utils'
+import { shallowMerge, pick, toProp, shallowEqual } from '../utils'
 import log from '../console'
 import compose from 'basic-compose'
 import { into } from 'basic-cursors'
-import { Observable } from 'rxjs/Observable'
-import { combineLatest } from 'rxjs/observable/combineLatest'
-import { merge } from 'rxjs/observable/merge'
+import { Observable, combineLatest, merge } from 'rxjs'
 import {
   delay, distinctUntilChanged, filter, map, mapTo, pluck, share, startWith,
   switchMap, tap
@@ -54,11 +52,12 @@ export default compose(
   map(into('icon')(iconFromDisabled)),
   pickDistinct('disabled', 'onClick', 'icons'), // clean-up
   withToggleDisabledOnSuccess,
-  withEventHandler('click')(map(into('success')(doCopyToClipboard))),
+  withEventHandler('click')(<any>map(into('success')(doCopyToClipboard))),
+  tap(log('copy-button:props:')),
   map(shallowMerge(DEFAULT_PROPS)) // icons are not deep-copied
 ) as Operator<CopyButtonProps,ButtonViewProps>
 
-function doCopyToClipboard({ event, value }) {
+function doCopyToClipboard({ event, value }): boolean {
   event.payload.preventDefault()
   return copyToClipboard(value) //true on success
 }

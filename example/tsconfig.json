@@ -1,7 +1,7 @@
 {
   "compileOnSave": true,
   "compilerOptions": {
-    "target": "es5",
+    "target": "es2015",
     "module": "commonjs",
     "moduleResolution": "node",
     "lib": [
@@ -16,9 +16,8 @@
     "declaration": true,
     "sourceMap": true,
     "noEmitHelpers": false,
-    "importHelpers": false,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
+    "importHelpers": true,
+    "experimentalDecorators": false,
     "removeComments": false,
     "noImplicitAny": false
   },

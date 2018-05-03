@@ -1,14 +1,15 @@
 {
   "name": "component-from-stream",
-  "version": "0.10.0",
-  "description": "create a React-like component that sources its props from an observable stream",
+  "version": "0.11.0",
+  "description": "component-from-stream on steroids: create a React-like component integrating a tiny (<0.5kB) redux/redux-observable framework that sources its props from an observable stream.",
   "main": "dist/index.min.js",
   "typings": "dist/index.d.ts",
   "scripts": {
     "predist": "mkdirp dist && rimraf dist/*",
     "dist": "tsc -p src --outDir dist",
+    "symbol-observable-polyfill": "browserify -r symbol-observable --standalone symbol-observable -g uglifyify -p bundle-collapser/plugin -p [ common-shakeify -v ] | uglifyjs -c -m > example/symbol-observable.js",
     "postdist": "npm run uglify",
-    "example": "npm run example:bundle && npm run example:serve",
+    "example": "npm run example:bundle && npm run symbol-observable-polyfill && npm run example:serve",
     "example:serve": "http-server -c-1 -i -e html -o -p 6510 example",
     "preexample:bundle": "rimraf spec/example/*.js",
     "example:bundle": "browserify example/index.tsx -p [ tsify --project example ] -g uglifyify -p bundle-collapser/plugin -p [ common-shakeify -v ] | uglifyjs -c -m > example/index.js",
@@ -22,7 +23,13 @@
     "stream",
     "react",
     "preact",
-    "inferno"
+    "inferno",
+    "redux",
+    "reducer",
+    "redux-observable",
+    "epic",
+    "effect",
+    "stateless"
   ],
   "author": {
     "name": "Stephane M. Catala",
@@ -38,7 +45,6 @@
   },
   "homepage": "https://github.com/zenyway/component-from-stream#readme",
   "devDependencies": {
-    "@types/change-emitter": "^0.1.2",
     "@types/es6-promise": "^3.3.0",
     "basic-compose": "^4.0.0",
     "basic-cursors": "^1.0.0",
@@ -47,17 +53,18 @@
     "clipboard-copy": "^1.4.2",
     "common-shakeify": "^0.4.6",
     "http-server": "^0.11.1",
-    "inferno": "^4.0.8",
-    "inferno-create-element": "^4.0.8",
+    "inferno": "^5.0.4",
+    "inferno-create-element": "^5.0.4",
     "rimraf": "^2.6.2",
     "rx-with-event-handler": "^1.2.0",
-    "rxjs": "^5.5.10",
+    "rxjs": "^6.0.0",
+    "symbol-observable": "^1.2.0",
     "tsify": "^4.0.0",
     "tslint": "^5.9.1",
     "typescript": "^2.8.3",
-    "uglifyify": "^4.0.5"
+    "uglifyify": "^5.0.0"
   },
   "dependencies": {
-    "rx-subject": "^2.0.0"
+    "rx-subject": "^2.0.1"
   }
 }

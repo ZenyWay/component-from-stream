@@ -1,83 +1,91 @@
-# component-from-stream
+# component-from-stream on steroids
 [![NPM](https://nodei.co/npm/component-from-stream.png?compact=true)](https://nodei.co/npm/component-from-stream/)
 
+create a React-like component integrating a tiny (<0.5kB) redux/redux-observable
+framework that sources its props from an observable stream.
 based on [component-from-stream](https://github.com/acdlite/recompose/blob/master/docs/API.md#componentfromstream)
 from [recompose](https://npmjs.com/package/recompose),
 with the following enhancements:
-* in addition to being independent from any Observable framework,
-this implementation is also independent from any rendering framework,
-so long as it provides a `React`-like `Component` class.
-these dependencies are injected by the exported factory
-into the component factory it returns.
-* components are expressed as the combination of a view and a set of behaviours:
+* compatible with any [`React`](https://reactjs.org)-like framework,
+so long as it provides a [`React`](https://reactjs.org)-like `Component` class,<br/>
+e.g. [`PREACT`](https://preactjs.com/) or [`Inferno`](https://infernojs.org/).
+* [separation](#separation) of stateless view from stateful reactive behaviour.
+* life-cycle management and gated rendering from within
+the component's reactive behaviour:
+  * automatically complete on `componentWillUnmount`.
+  * only render when the reactive operator emits a `props` object,<br/>
+and render null on falsy values.
+* support for a custom dispatcher instead of the default `props` dispatcher,<br/>
+i.e. customize what the stream emits.
+* integrates a tiny (~0.5kB) [redux](https://www.npmjs.com/package/redux)/[redux-observable](https://www.npmjs.com/package/redux-observable)-like framework
+for structuring complex behaviours:<br/>
+runs an optional state reducer and any number of effects ([epics](https://redux-observable.js.org/docs/basics/Epics.html)).
+more info in the [API section](#API).
+
+compatible with observable libraries such as [`RxJS`](http://reactivex.io/rxjs/)
+or [`MOST`](https://www.npmjs.com/package/most)
+
+# <a name="separation"></a> Separation of stateless view from stateful behaviour
 the stateless rendering function (the component's view) is separated
 from the potentially stateful reactive operator (the component's behaviour)
 which maps the component's input stream of `props` to that of its rendering function.
-* the `props$` Observable from which a component streams its `props`
-automatically completes on `componentWillUnmount`,
-pushing life-cycle management into the component's reactive operator (behaviour).
-* components only render when its reactive operator emits a `props` object
-to the rendering function: rendering can hence be gated
-within a component's reactive operator (behaviour).
-* a component renders null when it's reactive operator emits a falsy value
-instead of a `props` object to the rendering function.
 
-another enhancement worth highlighting is the backward-compatible
-instantiation of a `component-from_stream` using a custom input dispatcher,
-that maps props before dispatching into the reactive operator, e.g. into actions.
-see [`with-event-handlers`](https://npmjs.com/package/with-event-handlers/)
-for a corresponding example.
-
-separation of behaviour from view has many advantages, among which:
+Separation of behaviour from view has many advantages, among which:
 * state can typically be confined to within a small subset of behaviours.
 * views can be stateless and easily tested separately (e.g. with [storybook](https://storybook.js.org/))
 * straightforward unit testing:
   * behaviours operate exclusively within streams of `props` = no DOM involved.
-  * unit testing development effort can focus on stateful unit behaviours,
-  stateless behaviours being straightforward to test.
-* a component's behaviour is mostly self-documenting.
+  * unit testing effort can focus on stateful unit behaviours,
+  stateless behaviours being straightforward to validate.
+* a component's behaviour typically becomes self-documenting.
 * behaviours are independent of rendering framework.
 * unit behaviours can be shared between components.
 * for a given view, an existing component's behaviour can be extended
 by composing it with additional unit behaviours.
 
-this module is deliberately limited to providing
-the glue with which to connect reactive behaviour
-with stateless rendering functions.
-Observable libraries such as [`RxJS`](http://reactivex.io/rxjs/)
-or [`MOST`](https://www.npmjs.com/package/most)
-provide a very rich set of reactive operators
-with which complex component behaviours can be implemented,
-in a purely reactive way.
-
 # Example
 see the full [example](./example/index.tsx) in this directory.
 run the example in your browser locally with `npm run example`
-or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.10.0/example/index.html).
+or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.11.0/example/index.html).
 
 this example demonstrates how to implement `component-from-stream` Components
 described in terms of their view and composed behaviour:
 
+`component-from-stream.ts`
+```ts
+import createComponentFromStreamFactory, {
+  ComponentFromStreamFactory, ComponentFromStreamConstructor
+} from '../src'
+import { InfernoChildren, Component } from 'inferno'
+import { from } from 'rxjs'
+
+export { ComponentFromStreamFactory, ComponentFromStreamConstructor, Component, InfernoChildren }
+
+// export a component-from-stream factory based on Inferno and RxJS
+export default createComponentFromStreamFactory<Component<any,any>,InfernoChildren>(
+  Component,
+  from
+)
+```
+
 `copy-button/index.ts`
 ```ts
-import renderButton from './view'
-import withCopyButtonBehaviour from './behaviour'
-import { createComponentFromStreamFactory } from 'component-from-stream'
-import { from } from 'rxjs/observable/from'
-import { distinctUntilChanged } from 'rxjs/operators'
+import Button from './view'
+import copyButtonBehaviour from './behaviour'
+import componentFromStream, {
+  ComponentFromStreamConstructor, Component, InfernoChildren
+} from '../component-from-stream'
 
-const componentFromStream = createComponentFromStreamFactory(Component, from)
-
-// create a reactive component from view and behaviour
-export default componentFromStream(renderButton, withCopyButtonBehaviour)
+export default componentFromStream(Button, copyButtonBehaviour)
 ```
 
 `copy-button/behaviour.ts`
 ```ts
-import { shallowMerge, pick, log } from '../utils'
+import { shallowEqual, shallowMerge, pick, log } from '../utils'
 import compose from 'basic-compose'
+import { into } from 'basic-cursors'
 import withEventHandler from 'rx-with-event-handler'
-import { map, tap } from 'rxjs/operators'
+import { distinctUntilChanged, map, tap } from 'rxjs/operators'
 
 export default compose(
   tap(log('copy-button:view-props:')),
@@ -127,8 +135,8 @@ for a brief moment whenever the `success` prop turns `true`.
 [check the code](./example/copy-button/behaviour.ts#L64-L75)
 for implementation details of this operator.
 
-# API
-the component factory is not directly exposed by this module:
+# <a name="API"></a>API
+the `component-from-stream` factory is not directly exposed by this module.<br/>
 instead, a higher-level factory is exposed for injecting the following dependencies:
 * the base `Component` from a [`React`](https://reactjs.org)-like library,
 e.g. [`PREACT`](https://preactjs.com/) or [`Inferno`](https://infernojs.org/).
@@ -138,76 +146,88 @@ or [`MOST`](https://www.npmjs.com/package/most).
 
 this higher-level factory returns the required component factory
 after injection of the supplied dependencies.
+it is typically only required once in a project,
+the resulting `component-from-stream` factory being exposed to the project's
+other modules.
 
 the above example illustrates the traditional instatiation of a `component-from-stream`,
 with a reactive operator that maps incoming props to view props.
 
-the component factory may be given additional optional arguments:
-* `onProps` dispatcher: a function that maps incoming props before dispatching,
+the component factory may however be given additional optional arguments,
+for structuring more complex behaviours:
+* `dispatch` dispatcher factory: a factory that returns a projecting function
+that maps incoming props before dispatching,
 e.g. to dispatch an FSA object with props as payload into the `operator`.
-* an options object
-
-the options object is currently limited to the `from-stream-only` property:
-when true, the `operator` will only receive the input `source$` stream,
-instead of both the stream and the dispatch function.
+* `reducer`: a state reducer to implement a redux architecture.
+in combination with e.g. a custom FSA dispatcher,
+incoming props are dispatched as actions that reduce an internal state.
+* `...effects`: rest arguments are [epic](https://redux-observable.js.org/docs/basics/Epics.html)-like functions
+that return a stream of actions from input action and state streams.
+the actions from the returned stream are dispatched as well.
+as with [epics](https://redux-observable.js.org/docs/basics/Epics.html),
+state and view props are updated before actions are pushed into the epics.
 
 ```ts
 import { Subscribable } from 'rx-subject'
 export { Subscribable }
 
-export default function createComponentFromStreamFactory<N = {}, C = {}>(
-  ComponentCtor: new (props: any, context?: any) => C & Component<N, {}, {}>,
+export default function createComponentFromStreamFactory
+  <C extends Component<N, any, any>, N>(
+  ComponentCtor: new (props: any, context?: any) => C & Component<N, any, any>,
   fromESObservable: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
-  toESObservable?: <T, O extends Subscribable<T>>(stream: O) => Subscribable<T>
-): ComponentFromStreamFactory<N, C>
+  opts?: Partial<ComponentFromStreamOptions>
+): ComponentFromStreamFactory<C, N>
+export default function createComponentFromStreamFactory
+  <C extends Component<N, any, any>, N>(
+  ComponentCtor: new (props: any, context?: any) => C & Component<N, any, any>,
+  fromESObservable: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
+  toESObservable: <T, O extends Subscribable<T>>(stream: O) => Subscribable<T>,
+  opts?: Partial<ComponentFromStreamOptions>
+): ComponentFromStreamFactory<C, N>
 
-export interface ComponentFromStreamFactory<N = {}, C = {}> {
-  <P = {}, Q = P>(
+export interface ComponentFromStreamFactory
+  <C extends Component<N, any, any>, N> {
+  <P = {}, Q = P, A = P>(
     render: (props: Q) => N,
-    opts?: Partial<ComponentFromStreamOptions>
-  ): ComponentFromStreamConstructor<N, C, P, Q>
-  <P = {}, Q = P>(
+    operator?: Operator<A, Q>,
+    dispatch?: DispatcherFactory<P, A>
+  ): ComponentFromStreamConstructor<C, N>
+  <P = {}, A = P, Q = P, S = void>(
     render: (props: Q) => N,
-    operator: Operator<P, Q>,
-    opts?: Partial<ComponentFromStreamOptions>
-  ): ComponentFromStreamConstructor<N, C, P, Q>
-  <P = {}, A = P, Q = P>(
-    render: (props: Q) => N,
-    operator: Operator<P, Q>,
-    onProps: PropsDispatcherFactory<P, A>,
-    opts?: Partial<ComponentFromStreamOptions>
-  ): ComponentFromStreamConstructor<N, C, P, Q>
+    operator: Operator<S, Q>,
+    dispatch: DispatcherFactory<P, A>,
+    reducer: Reducer<S, A>,
+    ...effects: Effect<S, A>[]
+  ): ComponentFromStreamConstructor<C, N>
 }
 
-export interface ComponentFromStreamOptions {
-  'from-stream-only': boolean
+export interface ComponentFromStreamOptions { } // ignored in current version
+
+export interface ComponentFromStreamConstructor
+  <C extends Component<N, any, any>, N> {
+  new <P = {}, Q = P>(
+    props?: P, context?: any
+  ): C & ComponentFromStream<N, P, Q>
 }
 
-export interface ComponentFromStreamConstructor<N = {}, C = {}, P = {}, Q = P> {
-  new (props: P, context?: any): C & ComponentFromStream<N, P, Q>
-}
-
-export interface ComponentFromStream<N = {}, P = {}, Q = P>
+export interface ComponentFromStream<N, P = {}, Q = P>
   extends Component<N, P, ViewPropsState<Q>> {
-    _source$: Subscribable<Readonly<P>>
-    componentWillMount(): void
-    componentWillReceiveProps(nextProps: Readonly<P>, nextContext: any): void
-    componentWillUnmount(): void
-    shouldComponentUpdate(
-      nextProps: Readonly<P>,
-      nextState: Readonly<ViewPropsState<Q>>
-    ): boolean
+  componentWillMount(): void
+  componentWillReceiveProps(nextProps: Readonly<P>, nextContext: any): void
+  componentWillUnmount(): void
+  shouldComponentUpdate(props: Readonly<P>, state: Readonly<ViewPropsState<Q>>): boolean
 }
 
-export interface ComponentConstructor<N = {}, P = {}> {
-  new (props: P, context?: any): Component<N, {}, {}>
+export interface ComponentConstructor<N> {
+  new <P = {}, S = {}>(props: P, context?: any): Component<N, P, S>
 }
 
-export interface Component<N = {}, P = {}, S = {}> {
-  setState<K extends keyof S>(state: Pick<S, K> | S, cb?: () => void): void
-  render(): N
+export interface Component<N, P = {}, S = {}> {
+  setState(state: Reducer<S, P> | Partial<S>, cb?: () => void): void
+  render(props?: P, state?: S, context?: any): N
   props: Readonly<P>
-  state: Readonly<S>
+  state: Readonly<S | null>
+  context: any
 }
 
 export interface ViewPropsState<Q> {
@@ -220,12 +240,25 @@ export declare type Operator<I, O> =
     next?: (val: I) => void
   ) => T
 
-export declare type PropsDispatcherFactory<P, A = P> =
+export declare type DispatcherFactory<P, A = P> =
   <S extends Subscribable<A>>(
     dispatch: (v: A) => void,
     source$?: S
   ) => (props: P) => void
+
+export declare type Reducer<A, V> = (acc: A, val: V) => A
+
+export declare type Effect<S, A> =
+  (action$: Subscribable<A>, state$?: Subscribable<S>) => Subscribable<A>
 ```
+
+# `Symbol.observable`
+This module expects `Symbol.observable` to be defined in the global scope.
+Use a polyfill such as [`symbol-observable`](https://npmjs.com/package/symbol-observable/)
+and if necessary a `Symbol` polyfill.
+Check the [`symbol-observable-polyfill` script](./package.json#L10)
+for an example of how to generate the standalone polyfill,
+which can than be [loaded from a script tag](./example/index.html#L27).
 
 # TypeScript
 although this library is written in [TypeScript](https://www.typescriptlang.org),

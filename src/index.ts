@@ -72,55 +72,50 @@
  * SOFTWARE.
  */
 ;
-import createSubject, { Subscribable, Subscription } from 'rx-subject'
+import createSubject, { Subject, Subscribable, Subscription } from 'rx-subject'
 
-export interface ComponentFromStreamFactory<N={},C={}> {
-  <P={},Q=P>(
+export interface ComponentFromStreamFactory<C extends Component<N,any,any>,N> {
+  <P={},Q=P,A=P>(
     render: (props: Q) => N,
-    opts?: Partial<ComponentFromStreamOptions>
-  ): ComponentFromStreamConstructor<N, C, P, Q>
-  <P={},Q=P>(
+    operator?: Operator<A,Q>,
+    dispatch?: DispatcherFactory<P,A>
+  ): ComponentFromStreamConstructor<C,N>
+  <P={},A=P,Q=P,S=void>(
     render: (props: Q) => N,
-    operator: Operator<P,Q>,
-    opts?: Partial<ComponentFromStreamOptions>
-  ): ComponentFromStreamConstructor<N, C, P, Q>
-  <P={},A=P,Q=P>(
-    render: (props: Q) => N,
-    operator: Operator<P,Q>,
-    onProps: PropsDispatcherFactory<P,A>,
-    opts?: Partial<ComponentFromStreamOptions>
-  ): ComponentFromStreamConstructor<N, C, P, Q>
+    operator: Operator<S,Q>,
+    dispatch: DispatcherFactory<P,A>,
+    reducer: Reducer<S,A>,
+    ...effects: Effect<S,A>[]
+  ): ComponentFromStreamConstructor<C,N>
 }
 
-export interface ComponentFromStreamOptions {
-  'from-stream-only': boolean
+export interface ComponentFromStreamOptions {}
+
+export interface ComponentFromStreamConstructor<C extends Component<N,any,any>,N> {
+  new <P={},Q=P>(props?: P, context?: any): C & ComponentFromStream<N,P,Q>
 }
 
-export interface ComponentFromStreamConstructor<N={},C={},P={},Q=P> {
-  new (props: P, context?: any): C & ComponentFromStream<N,P,Q>
-}
-
-export interface ComponentFromStream<N={},P={},Q=P>
+export interface ComponentFromStream<N,P={},Q=P>
 extends Component<N,P,ViewPropsState<Q>> {
-  _source$: Subscribable<Readonly<P>>
   componentWillMount (): void
   componentWillReceiveProps (nextProps: Readonly<P>, nextContext: any): void
   componentWillUnmount (): void
   shouldComponentUpdate (
-    nextProps: Readonly<P>,
-    nextState: Readonly<ViewPropsState<Q>>
+    props: Readonly<P>,
+    state: Readonly<ViewPropsState<Q>>
   ): boolean
 }
 
-export interface ComponentConstructor<N={},P={}> {
-  new (props: P, context?: any): Component<N,{},{}>
+export interface ComponentConstructor<N> {
+  new <P={},S={}>(props: P, context?: any): Component<N,P,S>
 }
 
-export interface Component<N={},P={},S={}> {
-  setState<K extends keyof S> (state: Pick<S, K> | S, cb?: () => void): void
-  render(): N
+export interface Component<N,P={},S={}> {
+  setState (state: Reducer<S,P> | Partial<S>, cb?: () => void): void
+  render(props?: P, state?: S, context?: any): N
   props: Readonly<P>
-  state: Readonly<S>
+  state: Readonly<S|null>
+  context: any
 }
 
 export interface ViewPropsState<Q> {
@@ -130,96 +125,140 @@ export interface ViewPropsState<Q> {
 export type Operator<I,O> = <S extends Subscribable<I>,T extends Subscribable<O>>
   (source$: S, next?: (val: I) => void) => T
 
-export type PropsDispatcherFactory<P,A=P> = <S extends Subscribable<A>>
+export type DispatcherFactory<P,A=P> = <S extends Subscribable<A>>
   (dispatch: (v: A) => void, source$?: S) => (props: P) => void
+
+export type Reducer<A,V> = (acc: A, val: V) => A
+
+export type Effect<S,A> =
+  (action$: Subscribable<A>, state$?: Subscribable<S>) => Subscribable<A>
 
 export { Subscribable }
 
-export default function createComponentFromStreamFactory <N={},C={}>(
-  ComponentCtor: new (props: any, context?: any) => C & Component<N,{},{}>,
+export default function createComponentFromStreamFactory <C extends Component<N,any,any>,N>(
+  ComponentCtor: new (props: any, context?: any) => C & Component<N,any,any>,
   fromESObservable: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
-  toESObservable: <T, O extends Subscribable<T>>(stream: O) => Subscribable<T> = identity
-): ComponentFromStreamFactory<N,C> {
-  return function createComponentFromStream <P,Q=P>(
-    render: (props: Q) => N
-  ): ComponentFromStreamConstructor<N,C,P,Q> {
-    const op = argv(arguments, 1, isFunction, <Operator<P,Q>>identity)
-    const onProps =
-      argv(arguments, 2, isFunction, <PropsDispatcherFactory<P,any>>identity)
-    const opts =
-      argv(arguments, -1, isObject, <Partial<ComponentFromStreamOptions>>{})
+  opts?: Partial<ComponentFromStreamOptions>
+): ComponentFromStreamFactory<C,N>
+export default function createComponentFromStreamFactory <C extends Component<N,any,any>,N>(
+  ComponentCtor: new (props: any, context?: any) => C & Component<N,any,any>,
+  fromESObservable: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
+  toESObservable: <T, O extends Subscribable<T>>(stream: O) => Subscribable<T>,
+  opts?: Partial<ComponentFromStreamOptions>
+): ComponentFromStreamFactory<C,N>
+export default function createComponentFromStreamFactory <C extends Component<N,any,any>,N>(
+  ComponentCtor: new (props: any, context?: any) => C & Component<N,any,any>,
+  fromESObservable: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
+  toESObservableOrOpts = identity as (<T, O extends Subscribable<T>>(stream: O) => Subscribable<T>)|Partial<ComponentFromStreamOptions>,
+  opts = {} as Partial<ComponentFromStreamOptions>
+): ComponentFromStreamFactory<C,N> {
+  if (!isFunction(toESObservableOrOpts)) {
+    return createComponentFromStreamFactory(
+      ComponentCtor,
+      fromESObservable,
+      void 0, // toESObservable
+      toESObservableOrOpts // opts
+    )
+  }
+  const toESObservable = toESObservableOrOpts
 
-    return class ComponentFromStreamClass
-    extends (ComponentCtor as ComponentConstructor<N,P>) // base class cannot be generic
-    implements ComponentFromStream<N,P,Q> {
+  return function createComponentFromStream <P={},A=P,Q=P,S=void>(
+    render: (props: Q) => N,
+    operator: Operator<A|S,Q> = identity as Operator<A,Q>,
+    dispatch = identity as DispatcherFactory<P,A>,
+    reducer?: Reducer<S,A>,
+    ...effects: Effect<S,A>[]
+  ): ComponentFromStreamConstructor<C,N> {
+    abstract class ComponentFromStreamBaseClass
+      extends (ComponentCtor as ComponentConstructor<N>)
+      implements ComponentFromStream<N,P,Q> {
+
       state = {} as Readonly<ViewPropsState<Q>> // view props
 
       props: Readonly<P> // own props
 
-      private _dispatcher = createSubject<Readonly<P>>()
+      protected _inputs = createSubject<A>()
+      protected _input$ = fromESObservable(this._inputs.source$)
+      protected _onInput: (val: any) => void = function () {}
 
-      _source$ = fromESObservable(this._dispatcher.source$)
-
-      _onProps = onProps(this._dispatcher.sink.next, this._source$)
+      protected _onProps = dispatch(this._inputs.sink.next, this._input$)
+      protected _setProps =
+        (props: Readonly<Q>) => this.setState({ props })
+      // not shared: simultaneously subscribed at most once (when mounted)
+      protected _props$: Subscribable<Q>
 
       render() {
         return !this.state.props ? null : render(this.state.props)
       }
 
+      protected _subs = [] as Subscription[]
+      protected _subscribe () { // should always be called first by overriding subclasses
+        this._subs.push(this._props$.subscribe(this._setProps))
+      }
+      protected _unsubscribe = () => this._subs.forEach(unsubscribe)
+
       componentWillMount() {
-        this._subscription = this._props$.subscribe(
-          this._setProps,
-          this._unsubscribe,
-          this._unsubscribe
+        this._subscribe()
+        // unsubscribe on complete from componentWillUnmount or error
+        this._inputs.source$.subscribe( // no need to unsubscribe this one
+          this._onInput, // hook for mapping input values
+          this._unsubscribe, // takeUntil(input$.pipe(last()))
+          this._unsubscribe // takeUntil(input$.pipe(last()))
         )
         this._onProps(this.props)
       }
 
-      componentWillReceiveProps(nextProps: Readonly<P>) {
-        this._onProps(nextProps)
+      componentWillReceiveProps(props: Readonly<P>) {
+        this._onProps(props)
       }
 
       componentWillUnmount () {
-        this._dispatcher.sink.complete()
+        this._inputs.sink.complete()
       }
 
-      shouldComponentUpdate(_: any, nextState: Readonly<ViewPropsState<Q>>) {
-        return nextState.props !== this.state.props
+      shouldComponentUpdate(_: any, state: Readonly<ViewPropsState<Q>>) {
+        return state.props !== this.state.props
       }
+    }
 
-      private _subscription: Subscription
+    return !reducer
+      ? class ComponentFromStreamClass
+          extends ComponentFromStreamBaseClass
+          implements ComponentFromStream<N,P,Q> {
 
-      private _unsubscribe = () => this._subscription.unsubscribe()
+          protected _props$ = toESObservable<Q, Subscribable<Q>>(operator(this._input$))
+      }
+      : class ComponentFromReduxStreamClass
+          extends ComponentFromStreamBaseClass
+          implements ComponentFromStream<N,P,Q> {
 
-      private _setProps =
-        (props: Readonly<Q>) => this.setState({ props })
+          protected _state?: S
+          protected _onInput = (action: A) => this._states.sink.next(
+            this._state = reducer(this._state, action)
+          )
+          protected _states: Subject<A|S> = createSubject<S>()
+          protected _state$ = fromESObservable(this._states.source$)
 
-      // not shared: simultaneously subscribed at most once (when mounted)
-      private _props$ = toESObservable(
-        !opts['from-stream-only']
-          ? op(this._source$, this._dispatcher.sink.next)
-          : op(this._source$)
-      )
-    } as any // retrofit back generic from base class
+          protected _props$ = toESObservable<Q, Subscribable<Q>>(operator(this._state$))
+
+          protected _effects = effects.map(
+            (effect: Effect<S,A>) => effect(this._input$, this._state$ as Subscribable<S>)
+          )
+
+          protected _subscribeEffect = (effect$: Subscribable<A>) =>
+            this._subs.push(effect$.subscribe(this._inputs.sink.next))
+
+          protected _subscribe () {
+            super._unsubscribe()
+            this._effects.forEach(this._subscribeEffect)
+            this._state = void 0
+          }
+        } as ComponentFromStreamConstructor<any,N>
   }
 }
 
-type Predicate = (v: any) => boolean
-
-function argv <T>(
-  args: IArguments,
-  index: number,
-  predicate: Predicate,
-  fallback: T
-): T {
-  const i = index < 0 ? args.length + index : index
-  return (i >= 0) && (args.length > i) && predicate(args[i])
-    ? args[i]
-    : fallback
-}
-
-function isObject (val: any): val is Object {
-  return !!val && (typeof val === 'object')
+function unsubscribe(sub: Subscription) {
+  sub.unsubscribe()
 }
 
 function isFunction (v: any): v is Function {

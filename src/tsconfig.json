@@ -5,20 +5,13 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "lib": [
-      "es2015",
-      "dom"
+      "es2015"
     ],
-    "types": [
-			"inferno"
-    ],
-		"jsx": "react",
-		"jsxFactory": "createElement",
     "declaration": true,
     "sourceMap": false,
     "noEmitHelpers": false,
-    "importHelpers": false,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
+    "importHelpers": true,
+    "experimentalDecorators": false,
     "removeComments": true,
     "noImplicitAny": true,
     "suppressImplicitAnyIndexErrors": true
