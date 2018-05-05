@@ -1,6 +1,6 @@
 {
   "name": "component-from-stream",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "description": "component-from-stream on steroids: create a React-like component integrating a tiny (<0.5kB) redux/redux-observable framework that sources its props from an observable stream.",
   "main": "dist/index.min.js",
   "typings": "dist/index.d.ts",
@@ -65,6 +65,6 @@
     "uglifyify": "^5.0.0"
   },
   "dependencies": {
-    "rx-subject": "^2.0.1"
+    "rx-subject": "^3.0.0"
   }
 }
