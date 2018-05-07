@@ -17,7 +17,7 @@ the component's reactive behaviour:
 and render null on falsy values.
 * support for a custom dispatcher instead of the default `props` dispatcher,<br/>
 i.e. customize what the stream emits.
-* integrates a tiny (~0.5kB) [redux](https://www.npmjs.com/package/redux)/[redux-observable](https://www.npmjs.com/package/redux-observable)-like framework
+* integrates a tiny (<0.5kB) [redux](https://www.npmjs.com/package/redux)/[redux-observable](https://www.npmjs.com/package/redux-observable)-like framework
 for structuring complex behaviours:<br/>
 runs an optional state reducer and any number of effects ([epics](https://redux-observable.js.org/docs/basics/Epics.html)).
 more info in the [API section](#API).
@@ -258,7 +258,8 @@ Use a polyfill such as [`symbol-observable`](https://npmjs.com/package/symbol-ob
 and if necessary a `Symbol` polyfill.
 Check the [`symbol-observable-polyfill` script](./package.json#L10)
 for an example of how to generate the standalone polyfill,
-which can than be [loaded from a script tag](./example/index.html#L27).
+which can than be [loaded from a script tag](./example/index.html#L27),
+or simply add `import 'symbol-observable'` at the top of your project's main file.
 
 # TypeScript
 although this library is written in [TypeScript](https://www.typescriptlang.org),
