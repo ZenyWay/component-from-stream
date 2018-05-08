@@ -1,8 +1,7 @@
 # component-from-stream on steroids
 [![NPM](https://nodei.co/npm/component-from-stream.png?compact=true)](https://nodei.co/npm/component-from-stream/)
 
-create a React-like component integrating a tiny (<0.5kB) redux/redux-observable
-framework that sources its props from an observable stream.
+create a React-like component that sources its props from an observable stream and integrates a tiny (<0.5kB) redux/redux-observable engine.
 based on [component-from-stream](https://github.com/acdlite/recompose/blob/master/docs/API.md#componentfromstream)
 from [recompose](https://npmjs.com/package/recompose),
 with the following enhancements:
@@ -17,8 +16,8 @@ the component's reactive behaviour:
 and render null on falsy values.
 * support for a custom dispatcher instead of the default `props` dispatcher,<br/>
 i.e. customize what the stream emits.
-* integrates a tiny (<0.5kB) [redux](https://www.npmjs.com/package/redux)/[redux-observable](https://www.npmjs.com/package/redux-observable)-like framework
-for structuring complex behaviours:<br/>
+* integrates a tiny (<0.5kB) [redux](https://www.npmjs.com/package/redux)/[redux-observable](https://www.npmjs.com/package/redux-observable)-like engine
+for structuring complex behaviours into self-documenting code:<br/>
 runs an optional state reducer and any number of effects ([epics](https://redux-observable.js.org/docs/basics/Epics.html)).
 more info in the [API section](#API).
 
@@ -154,13 +153,13 @@ the above example illustrates the traditional instatiation of a `component-from-
 with a reactive operator that maps incoming props to view props.
 
 the component factory may however be given additional optional arguments,
-for structuring more complex behaviours:
+for structuring more complex behaviours into self-documenting code:
 * `dispatch` dispatcher factory: a factory that returns a projecting function
 that maps incoming props before dispatching,
 e.g. to dispatch an FSA object with props as payload into the `operator`.
-* `reducer`: a state reducer to implement a redux architecture.
+* `reducer`: a state reducer for the redux engine.
 in combination with e.g. a custom FSA dispatcher,
-incoming props are dispatched as actions that reduce an internal state.
+incoming props are dispatched as actions that reduce an internal state object.
 * `...effects`: rest arguments are [epic](https://redux-observable.js.org/docs/basics/Epics.html)-like functions
 that return a stream of actions from input action and state streams.
 the actions from the returned stream are dispatched as well.

@@ -18,11 +18,21 @@ import { Operator } from '../../src'
 import { shallowMerge, pick, toProp, shallowEqual } from '../utils'
 import log from '../console'
 import compose from 'basic-compose'
-import { into } from 'basic-cursors'
-import { Observable, combineLatest, merge } from 'rxjs'
+import { cursor, into } from 'basic-cursors'
+import { Observable, combineLatest, from, merge, never, identity } from 'rxjs'
 import {
-  delay, distinctUntilChanged, filter, map, mapTo, pluck, share, startWith,
-  switchMap, tap
+  catchError,
+  concatMap,
+  delay,
+  distinctUntilChanged,
+  filter,
+  map,
+  mapTo,
+  pluck,
+  share,
+  startWith,
+  switchMap,
+  tap
 } from 'rxjs/operators'
 import withEventHandler from 'rx-with-event-handler'
 import copyToClipboard = require('clipboard-copy')
@@ -52,14 +62,17 @@ export default compose(
   map(into('icon')(iconFromDisabled)),
   pickDistinct('disabled', 'onClick', 'icons'), // clean-up
   withToggleDisabledOnSuccess,
-  withEventHandler('click')(<any>map(into('success')(doCopyToClipboard))),
+  withEventHandler('click')(concatMap(mapInto('success')(doCopyToClipboard))),
   tap(log('copy-button:props:')),
   map(shallowMerge(DEFAULT_PROPS)) // icons are not deep-copied
 ) as Operator<CopyButtonProps,ButtonViewProps>
 
-function doCopyToClipboard({ event, value }): boolean {
+function doCopyToClipboard
+<P extends { event: E, value: string }, E extends { payload: MouseEvent }>(
+  { event, value }: P
+): Observable<boolean> {
   event.payload.preventDefault()
-  return copyToClipboard(value) //true on success
+  return from(copyToClipboard(value)).pipe(mapTo(true), catchError(never))
 }
 
 function withToggleDisabledOnSuccess(props$) {
@@ -88,4 +101,13 @@ function lag <S>(source$: Observable<S>) {
   return function (timeout: number) {
     return source$.pipe(delay(timeout))
   }
+}
+
+function mapInto (key: string) {
+  return cursor(
+    identity,
+    function <V,O>(v$: Observable<V>, o: O): Observable<O&{[k:string]:V}> {
+      return v$.pipe(map(v => Object.assign({}, o, { [key]: v })))
+    }
+  )
 }
