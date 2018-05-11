@@ -19,7 +19,7 @@ import { shallowMerge, pick, toProp, shallowEqual } from '../utils'
 import log from '../console'
 import compose from 'basic-compose'
 import { cursor, into } from 'basic-cursors'
-import { Observable, combineLatest, from, merge, never, identity } from 'rxjs'
+import { Observable, combineLatest, from, merge, empty, identity } from 'rxjs'
 import {
   catchError,
   concatMap,
@@ -72,7 +72,7 @@ function doCopyToClipboard
   { event, value }: P
 ): Observable<boolean> {
   event.payload.preventDefault()
-  return from(copyToClipboard(value)).pipe(mapTo(true), catchError(never))
+  return from(copyToClipboard(value)).pipe(mapTo(true), catchError(empty))
 }
 
 function withToggleDisabledOnSuccess(props$) {

@@ -249,7 +249,7 @@ export default function createComponentFromStreamFactory <C extends Component<N,
             this._subs.push(effect$.subscribe(this._inputs.sink.next))
 
           protected _subscribe () {
-            super._subscribe()
+            super._subscribe() // push new state values to _props$ before _effects
             this._effects.forEach(this._subscribeEffect)
             this._state = void 0
           }
