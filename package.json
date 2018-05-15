@@ -1,7 +1,7 @@
 {
   "name": "component-from-stream",
-  "version": "0.11.5",
-  "description": "component-from-stream on steroids: create a React-like component that sources its props from an observable stream and integrates a tiny (<0.5kB) redux/redux-observable engine.",
+  "version": "0.12.0",
+  "description": "component-from-stream on steroids: create a React-like component that sources its props from an observable stream and supports middleware.",
   "main": "dist/index.min.js",
   "typings": "dist/index.d.ts",
   "scripts": {

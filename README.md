@@ -1,7 +1,8 @@
 # component-from-stream on steroids
 [![NPM](https://nodei.co/npm/component-from-stream.png?compact=true)](https://nodei.co/npm/component-from-stream/)
 
-create a React-like component that sources its props from an observable stream and integrates a tiny (<0.5kB) redux/redux-observable engine.
+create a React-like component that sources its props from an observable stream
+and supports middleware.
 based on [component-from-stream](https://github.com/acdlite/recompose/blob/master/docs/API.md#componentfromstream)
 from [recompose](https://npmjs.com/package/recompose),
 with the following enhancements:
@@ -14,11 +15,9 @@ the component's reactive behaviour:
   * automatically complete on `componentWillUnmount`.
   * only render when the reactive operator emits a `props` object,<br/>
 and render null on falsy values.
-* support for a custom dispatcher instead of the default `props` dispatcher,<br/>
+* support for a custom `props` dispatcher instead of the default dispatcher,<br/>
 i.e. customize what the stream emits.
-* integrates a tiny (<0.5kB) [redux](https://www.npmjs.com/package/redux)/[redux-observable](https://www.npmjs.com/package/redux-observable)-like engine
-for structuring complex behaviours into self-documenting code:<br/>
-runs an optional state reducer and any number of effects ([epics](https://redux-observable.js.org/docs/basics/Epics.html)).
+* supports any number of middleware in the dispatching path.
 more info in the [API section](#API).
 
 compatible with observable libraries such as [`RxJS`](http://reactivex.io/rxjs/)
@@ -45,7 +44,7 @@ by composing it with additional unit behaviours.
 # Example
 see the full [example](./example/index.tsx) in this directory.
 run the example in your browser locally with `npm run example`
-or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.11.5/example/index.html).
+or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.12.0/example/index.html).
 
 this example demonstrates how to implement `component-from-stream` Components
 described in terms of their view and composed behaviour:
@@ -154,101 +153,96 @@ with a reactive operator that maps incoming props to view props.
 
 the component factory may however be given additional optional arguments,
 for structuring more complex behaviours into self-documenting code:
-* `dispatch` dispatcher factory: a factory that returns a projecting function
-that maps incoming props before dispatching,
-e.g. to dispatch an FSA object with props as payload into the `operator`.
-* `reducer`: a state reducer for the redux engine.
-in combination with e.g. a custom FSA dispatcher,
-incoming props are dispatched as actions that reduce an internal state object.
-* `...effects`: rest arguments are [epic](https://redux-observable.js.org/docs/basics/Epics.html)-like functions
-that return a stream of actions from input action and state streams.
-the actions from the returned stream are dispatched as well.
-as with [epics](https://redux-observable.js.org/docs/basics/Epics.html),
-state and view props are updated before actions are pushed into the epics.
+* `onprops` dispatcher factory: a factory that returns a custom props dispatcher,
+e.g. to add default props, event handlers,
+and/or to dispatch an [FSA](https://www.npmjs.com/package/flux-standard-action)
+object with props as payload.
+* `...middlewares`: rest arguments are middleware for dispatching.
 
 ```ts
 import { Subscribable } from 'rx-subject'
 export { Subscribable }
 
 export default function createComponentFromStreamFactory
-  <C extends Component<N, any, any>, N>(
+<C extends Component<N, any, any>, N>(
   ComponentCtor: new (props: any, context?: any) => C & Component<N, any, any>,
   fromESObservable: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
   opts?: Partial<ComponentFromStreamOptions>
 ): ComponentFromStreamFactory<C, N>
 export default function createComponentFromStreamFactory
-  <C extends Component<N, any, any>, N>(
+<C extends Component<N, any, any>, N>(
   ComponentCtor: new (props: any, context?: any) => C & Component<N, any, any>,
   fromESObservable: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
   toESObservable: <T, O extends Subscribable<T>>(stream: O) => Subscribable<T>,
   opts?: Partial<ComponentFromStreamOptions>
 ): ComponentFromStreamFactory<C, N>
 
-export interface ComponentFromStreamFactory
-  <C extends Component<N, any, any>, N> {
+export interface ComponentFromStreamFactory<C extends Component<N, any, any>, N> {
   <P = {}, Q = P, A = P>(
     render: (props: Q) => N,
     operator?: Operator<A, Q>,
-    dispatch?: DispatcherFactory<P, A>
+    onprops?: PropsDispatcherFactory<P, A>
   ): ComponentFromStreamConstructor<C, N>
   <P = {}, A = P, Q = P, S = void>(
     render: (props: Q) => N,
     operator: Operator<S, Q>,
-    dispatch: DispatcherFactory<P, A>,
-    reducer: Reducer<S, A>,
-    ...effects: Effect<S, A>[]
+    onprops: PropsDispatcherFactory<P, A>,
+    ...middlewares: Middleware<A>[]
   ): ComponentFromStreamConstructor<C, N>
 }
 
-export interface ComponentFromStreamOptions { } // ignored in current version
+export interface ComponentFromStreamOptions {}
 
 export interface ComponentFromStreamConstructor
-  <C extends Component<N, any, any>, N> {
-  new <P = {}, Q = P>(
-    props?: P, context?: any
-  ): C & ComponentFromStream<N, P, Q>
+<C extends Component<N, any, any>, N> {
+  new <P = {}, Q = P>(props?: P, context?: any): C & ComponentFromStream<N, P, Q>
 }
 
 export interface ComponentFromStream<N, P = {}, Q = P>
-  extends Component<N, P, ViewPropsState<Q>> {
+extends Component<N, P, ViewPropsState<Q>> {
   componentWillMount(): void
   componentWillReceiveProps(nextProps: Readonly<P>, nextContext: any): void
   componentWillUnmount(): void
-  shouldComponentUpdate(props: Readonly<P>, state: Readonly<ViewPropsState<Q>>): boolean
+  shouldComponentUpdate(
+    props: Readonly<P>,
+    state: Readonly<ViewPropsState<Q>>
+  ): boolean
 }
 
 export interface ComponentConstructor<N> {
-  new <P = {}, S = {}>(props: P, context?: any): Component<N, P, S>
+    new <P = {}, S = {}>(props: P, context?: any): Component<N, P, S>
 }
 
 export interface Component<N, P = {}, S = {}> {
-  setState(state: Reducer<S, P> | Partial<S>, cb?: () => void): void
-  render(props?: P, state?: S, context?: any): N
-  props: Readonly<P>
-  state: Readonly<S | null>
-  context: any
+    setState(state: Reducer<S, P> | Partial<S>, cb?: () => void): void
+    render(props?: P, state?: S, context?: any): N
+    props: Readonly<P>
+    state: Readonly<S | null>
+    context: any
 }
 
 export interface ViewPropsState<Q> {
-  props: Q
+    props: Q
 }
 
 export declare type Operator<I, O> =
-  <S extends Subscribable<I>, T extends Subscribable<O>>(
-    source$: S,
-    next?: (val: I) => void
-  ) => T
+  <S extends Subscribable<I>, T extends Subscribable<O>>(source$: S) => T
 
-export declare type DispatcherFactory<P, A = P> =
+export declare type PropsDispatcherFactory<P, A = P> =
   <S extends Subscribable<A>>(
     dispatch: (v: A) => void,
     source$?: S
   ) => (props: P) => void
 
-export declare type Reducer<A, V> = (acc: A, val: V) => A
+export declare type Middleware<I> =
+  <Q extends Subscribable<I>>(
+    dispatch: (...args: any[]) => void,
+    source$?: Q,
+    fromESObservable?: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
+    toESObservable?: <T, O extends Subscribable<T>>(stream: O) => Subscribable<T>
+  ) => (...args: any[]) => void
 
-export declare type Effect<S, A> =
-  (action$: Subscribable<A>, state$?: Subscribable<S>) => Subscribable<A>
+export declare type Reducer<A, V> = (acc: A, val: V) => A
 ```
 
 # `Symbol.observable`
