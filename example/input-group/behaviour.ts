@@ -16,7 +16,7 @@
 import { InputGroupViewProps, AddonButton } from './view'
 import log from '../console'
 import compose from 'basic-compose'
-import { Operator } from '../../src'
+import { Operator } from '../../'
 import withEventHandler from 'rx-with-event-handler'
 import { into } from 'basic-cursors'
 import { pick, when, hasEvent, shallowEqual } from '../utils'

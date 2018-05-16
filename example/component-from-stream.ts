@@ -15,7 +15,7 @@
 ;
 import createComponentFromStreamFactory, {
   ComponentFromStreamFactory, ComponentFromStreamConstructor
-} from '../src'
+} from '../'
 import { InfernoChildren, Component } from 'inferno'
 import { from } from 'rxjs'
 

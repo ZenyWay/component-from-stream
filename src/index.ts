@@ -184,38 +184,38 @@ export default function createComponentFromStreamFactory <C extends Component<N,
       }
 
       componentWillMount() {
-        this._inputs = createSubject<A>()
-        const input$ = fromES(this._inputs.source$)
+        this._q = createSubject<A>()
+        const q$ = fromES(this._q.source$)
         this._sub =
-          toES<Q, Subscribable<Q>>(operator(input$)).subscribe(this._setProps)
-        this._inputs.source$.subscribe(nop, this._unsubscribe, this._unsubscribe)
-        const dispatch =
-          middlewares.reduceRight(this._applyMiddleware, this._inputs.sink.next)
-        this._onOwnProps = onProps(dispatch, input$)
-        this._onOwnProps(this.props)
+          toES<Q, Subscribable<Q>>(operator(q$)).subscribe(this._setProps)
+        this._q.source$.subscribe(nop, this._unsubscribe, this._unsubscribe)
+        const next =
+          middlewares.reduceRight(this._applyMiddleware, this._q.sink.next)
+        this._onProps = onProps(next, q$)
+        this._onProps(this.props)
       }
 
       componentWillReceiveProps(props: Readonly<P>) {
-        this._onOwnProps(props)
+        this._onProps(props)
       }
 
       componentWillUnmount () {
-        this._inputs.sink.complete()
+        this._q.sink.complete()
       }
 
       shouldComponentUpdate(_: any, state: Readonly<ViewPropsState<Q>>) {
         return state.props !== this.state.props
       }
 
-      private _inputs: Subject<A>
+      private _q: Subject<A>
 
-      private _onOwnProps: (props: P) => void
+      private _onProps: (props: P) => void
       private _setProps = (props: Readonly<Q>) => this.setState({ props })
 
       private _applyMiddleware = (
-        dispatch: (...args: any[]) => void,
+        next: (...args: any[]) => void,
         middleware: Middleware<A>
-      ) => middleware(dispatch, this._inputs.source$, fromES, toES)
+      ) => middleware(next, this._q.source$, fromES, toES)
 
       private _sub: Subscription
       private _unsubscribe = () => this._sub.unsubscribe()

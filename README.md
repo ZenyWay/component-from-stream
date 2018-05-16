@@ -44,7 +44,7 @@ by composing it with additional unit behaviours.
 # Example
 see the full [example](./example/index.tsx) in this directory.
 run the example in your browser locally with `npm run example`
-or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.12.0/example/index.html).
+or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.12.1/example/index.html).
 
 this example demonstrates how to implement `component-from-stream` Components
 described in terms of their view and composed behaviour:
@@ -53,7 +53,7 @@ described in terms of their view and composed behaviour:
 ```ts
 import createComponentFromStreamFactory, {
   ComponentFromStreamFactory, ComponentFromStreamConstructor
-} from '../src'
+} from '../'
 import { InfernoChildren, Component } from 'inferno'
 import { from } from 'rxjs'
 

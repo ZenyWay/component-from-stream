@@ -14,7 +14,7 @@
  */
 ;
 import { ButtonViewProps } from './view'
-import { Operator } from '../../src'
+import { Operator } from '../../'
 import { shallowMerge, pick, toProp, shallowEqual } from '../utils'
 import log from '../console'
 import compose from 'basic-compose'
