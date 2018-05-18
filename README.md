@@ -6,19 +6,20 @@ and supports middleware.
 based on [component-from-stream](https://github.com/acdlite/recompose/blob/master/docs/API.md#componentfromstream)
 from [recompose](https://npmjs.com/package/recompose),
 with the following enhancements:
-* compatible with any [`React`](https://reactjs.org)-like framework,
-so long as it provides a [`React`](https://reactjs.org)-like `Component` class,<br/>
+* compatible with any [`React`](https://reactjs.org)-like framework,<br/>
+so long as it provides a [`React`](https://reactjs.org)-like `Component` class,
 e.g. [`PREACT`](https://preactjs.com/) or [`Inferno`](https://infernojs.org/).
+* support for any number of middleware in the dispatching path,<br/>
+e.g. [`component-from-stream-redux`](https://npmjs.com/package/component-from-stream-redux).<br/>
+more info in the [API section](#API).
+* support for a custom `props` dispatcher instead of the default dispatcher,<br/>
+i.e. customize what the stream emits.
 * [separation](#separation) of stateless view from stateful reactive behaviour.
 * life-cycle management and gated rendering from within
 the component's reactive behaviour:
   * automatically complete on `componentWillUnmount`.
   * only render when the reactive operator emits a `props` object,<br/>
 and render null on falsy values.
-* support for a custom `props` dispatcher instead of the default dispatcher,<br/>
-i.e. customize what the stream emits.
-* supports any number of middleware in the dispatching path.
-more info in the [API section](#API).
 
 compatible with observable libraries such as [`RxJS`](http://reactivex.io/rxjs/)
 or [`MOST`](https://www.npmjs.com/package/most)
@@ -42,12 +43,15 @@ Separation of behaviour from view has many advantages, among which:
 by composing it with additional unit behaviours.
 
 # Example
-see the full [example](./example/index.tsx) in this directory.
+see the full [example](./example/index.tsx) in this directory.<br/>
 run the example in your browser locally with `npm run example`
 or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.12.1/example/index.html).
 
 this example demonstrates how to implement `component-from-stream` Components
-described in terms of their view and composed behaviour:
+described in terms of their view and composed behaviour.<br/>
+for an example of a redux-like setup, see that in the
+[`component-from-stream-redux`](https://npmjs.com/package/component-from-stream-redux)
+middleware module.
 
 `component-from-stream.ts`
 ```ts
@@ -236,7 +240,7 @@ export declare type PropsDispatcherFactory<P, A = P> =
 
 export declare type Middleware<I> = (
     dispatch: (...args: any[]) => void,
-    source$?: Subscribable<I>,
+    source$?: Subscribable<I>, // raw ES Observable
     fromESObservable?: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
     toESObservable?: <T, O extends Subscribable<T>>(stream: O) => Subscribable<T>
   ) => (...args: any[]) => void
