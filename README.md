@@ -234,10 +234,9 @@ export declare type PropsDispatcherFactory<P, A = P> =
     source$?: S
   ) => (props: P) => void
 
-export declare type Middleware<I> =
-  <Q extends Subscribable<I>>(
+export declare type Middleware<I> = (
     dispatch: (...args: any[]) => void,
-    source$?: Q,
+    source$?: Subscribable<I>,
     fromESObservable?: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
     toESObservable?: <T, O extends Subscribable<T>>(stream: O) => Subscribable<T>
   ) => (...args: any[]) => void

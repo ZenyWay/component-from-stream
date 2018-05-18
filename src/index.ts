@@ -127,9 +127,9 @@ export type Operator<I,O> = <S extends Subscribable<I>,T extends Subscribable<O>
 export type PropsDispatcherFactory<P,A=P> = <S extends Subscribable<A>>
   (dispatch: (v: A) => void, source$?: S) => (props: P) => void
 
-export type Middleware<I> = <Q extends Subscribable<I>>(
+export type Middleware<I> = (
   dispatch: (...args: any[]) => void,
-  source$?: Q,
+  source$?: Subscribable<I>,
   fromESObservable?: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
   toESObservable?: <T, O extends Subscribable<T>>(stream: O) => Subscribable<T>
 ) => (...args: any[]) => void
