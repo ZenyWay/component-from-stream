@@ -42,6 +42,9 @@ Separation of behaviour from view has many advantages, among which:
 * for a given view, an existing component's behaviour can be extended
 by composing it with additional unit behaviours.
 
+# Block diagram
+![component-from-stream diagram](./component-from-stream.svg)
+
 # Example
 see the full [example](./example/index.tsx) in this directory.<br/>
 run the example in your browser locally with `npm run example`

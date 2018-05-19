@@ -1,6 +1,6 @@
 {
   "name": "component-from-stream",
-  "version": "0.12.3",
+  "version": "0.12.4",
   "description": "component-from-stream on steroids: create a React-like component that sources its props from an observable stream and supports middleware.",
   "main": "dist/index.min.js",
   "typings": "dist/index.d.ts",
