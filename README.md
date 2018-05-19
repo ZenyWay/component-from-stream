@@ -42,9 +42,6 @@ Separation of behaviour from view has many advantages, among which:
 * for a given view, an existing component's behaviour can be extended
 by composing it with additional unit behaviours.
 
-# Block diagram
-![component-from-stream diagram](./component-from-stream.svg)
-
 # Example
 see the full [example](./example/index.tsx) in this directory.<br/>
 run the example in your browser locally with `npm run example`
@@ -141,6 +138,8 @@ for a brief moment whenever the `success` prop turns `true`.
 for implementation details of this operator.
 
 # <a name="API"></a>API
+![component-from-stream diagram](./component-from-stream.svg)
+
 the `component-from-stream` factory is not directly exposed by this module.<br/>
 instead, a higher-level factory is exposed for injecting the following dependencies:
 * the base `Component` from a [`React`](https://reactjs.org)-like library,
@@ -222,7 +221,7 @@ export interface ComponentConstructor<N> {
 
 export interface Component<N, P = {}, S = {}> {
     setState(state: Reducer<S, P> | Partial<S>, cb?: () => void): void
-    render(props?: P, state?: S, context?: any): N
+    render(props?: P, state?: S, context?: any): N|void
     props: Readonly<P>
     state: Readonly<S | null>
     context: any

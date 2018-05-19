@@ -111,7 +111,7 @@ export interface ComponentConstructor<N> {
 
 export interface Component<N,P={},S={}> {
   setState (state: Reducer<S,P> | Partial<S>, cb?: () => void): void
-  render(props?: P, state?: S, context?: any): N
+  render(props?: P, state?: S, context?: any): N|void
   props: Readonly<P>
   state: Readonly<S|null>
   context: any
