@@ -128,7 +128,8 @@ export type PropsDispatcherFactory<P,A=P> = <S extends Subscribable<A>>
   (dispatch: (v: A) => void, source$?: S) => (props: P) => void
 
 export type Middleware<I> = (
-  dispatch: (...args: any[]) => void,
+  next: (...args: any[]) => void, // next middleware
+  dispatch: (...args: any[]) => void, // lead dispatcher (head of middlewares)
   source$?: Subscribable<I>,
   fromESObservable?: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
   toESObservable?: <T, O extends Subscribable<T>>(stream: O) => Subscribable<T>
@@ -189,9 +190,13 @@ export default function createComponentFromStreamFactory <C extends Component<N,
         this._sub =
           toES<Q, Subscribable<Q>>(operator(q$)).subscribe(this._setProps)
         this._q.source$.subscribe(nop, this._unsubscribe, this._unsubscribe)
-        const next =
-          middlewares.reduceRight(this._applyMiddleware, this._q.sink.next)
-        this._onProps = onProps(next, q$)
+        let i = middlewares.length
+        this._next = this._q.sink.next
+        while (i--) {
+          this._next =
+            middlewares[i](this._next, this._dispatch, this._q.source$, fromES, toES)
+        }
+        this._onProps = onProps(this._next, q$)
         this._onProps(this.props)
       }
 
@@ -212,10 +217,8 @@ export default function createComponentFromStreamFactory <C extends Component<N,
       private _onProps: (props: P) => void
       private _setProps = (props: Readonly<Q>) => this.setState({ props })
 
-      private _applyMiddleware = (
-        next: (...args: any[]) => void,
-        middleware: Middleware<A>
-      ) => middleware(next, this._q.source$, fromES, toES)
+      private _next: (...args: any[]) => void
+      private _dispatch = (...args: any[]) => this._next(...args)
 
       private _sub: Subscription
       private _unsubscribe = () => this._sub.unsubscribe()

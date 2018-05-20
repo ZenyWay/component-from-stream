@@ -1,19 +1,21 @@
 # component-from-stream on steroids
 [![NPM](https://nodei.co/npm/component-from-stream.png?compact=true)](https://nodei.co/npm/component-from-stream/)
 
-create a React-like component that sources its props from an observable stream
-and supports middleware.
+create a React-like component from any React-compatible library,
+that sources its props from an observable stream and supports middleware.
+
 based on [component-from-stream](https://github.com/acdlite/recompose/blob/master/docs/API.md#componentfromstream)
 from [recompose](https://npmjs.com/package/recompose),
 with the following enhancements:
-* compatible with any [`React`](https://reactjs.org)-like framework,<br/>
+* compatible with any [`React`](https://reactjs.org)-compatible library,<br/>
 so long as it provides a [`React`](https://reactjs.org)-like `Component` class,
 e.g. [`PREACT`](https://preactjs.com/) or [`Inferno`](https://infernojs.org/).
 * support for any number of middleware in the dispatching path,<br/>
 e.g. [`component-from-stream-redux`](https://npmjs.com/package/component-from-stream-redux).<br/>
 more info in the [API section](#API).
 * support for a custom `props` dispatcher instead of the default dispatcher,<br/>
-i.e. customize what the stream emits.
+e.g. to emit [FSAs](https://www.npmjs.com/package/flux-standard-action)
+into the [`component-from-stream-redux`](https://npmjs.com/package/component-from-stream-redux) middleware.
 * [separation](#separation) of stateless view from stateful reactive behaviour.
 * life-cycle management and gated rendering from within
 the component's reactive behaviour:
@@ -45,7 +47,7 @@ by composing it with additional unit behaviours.
 # Example
 see the full [example](./example/index.tsx) in this directory.<br/>
 run the example in your browser locally with `npm run example`
-or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.12.1/example/index.html).
+or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.13.0/example/index.html).
 
 this example demonstrates how to implement `component-from-stream` Components
 described in terms of their view and composed behaviour.<br/>
@@ -164,6 +166,8 @@ e.g. to add default props, event handlers,
 and/or to dispatch an [FSA](https://www.npmjs.com/package/flux-standard-action)
 object with props as payload.
 * `...middlewares`: rest arguments are middleware for dispatching.
+see the [`component-from-stream-redux`](https://npmjs.com/package/component-from-stream-redux)
+middleware module for an example middleware implementation.
 
 ```ts
 import { Subscribable } from 'rx-subject'
@@ -216,19 +220,19 @@ extends Component<N, P, ViewPropsState<Q>> {
 }
 
 export interface ComponentConstructor<N> {
-    new <P = {}, S = {}>(props: P, context?: any): Component<N, P, S>
+  new <P = {}, S = {}>(props: P, context?: any): Component<N, P, S>
 }
 
 export interface Component<N, P = {}, S = {}> {
-    setState(state: Reducer<S, P> | Partial<S>, cb?: () => void): void
-    render(props?: P, state?: S, context?: any): N|void
-    props: Readonly<P>
-    state: Readonly<S | null>
-    context: any
+  setState(state: Reducer<S, P> | Partial<S>, cb?: () => void): void
+  render(props?: P, state?: S, context?: any): N|void
+  props: Readonly<P>
+  state: Readonly<S | null>
+  context: any
 }
 
 export interface ViewPropsState<Q> {
-    props: Q
+  props: Q
 }
 
 export declare type Operator<I, O> =
@@ -241,11 +245,12 @@ export declare type PropsDispatcherFactory<P, A = P> =
   ) => (props: P) => void
 
 export declare type Middleware<I> = (
-    dispatch: (...args: any[]) => void,
-    source$?: Subscribable<I>, // raw ES Observable
-    fromESObservable?: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
-    toESObservable?: <T, O extends Subscribable<T>>(stream: O) => Subscribable<T>
-  ) => (...args: any[]) => void
+  next: (...args: any[]) => void, // next middleware
+  dispatch: (...args: any[]) => void, // lead dispatcher (head of middlewares)
+  source$?: Subscribable<I>, // raw ES Observable
+  fromESObservable?: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
+  toESObservable?: <T, O extends Subscribable<T>>(stream: O) => Subscribable<T>
+) => (...args: any[]) => void
 
 export declare type Reducer<A, V> = (acc: A, val: V) => A
 ```
