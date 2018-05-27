@@ -28,6 +28,7 @@ const stringify = JSON.stringify.bind(JSON)
 
 export default function log (this: void, label: string) {
   return function (...args) {
+    console.log(label, ...args)
     term.writeln([label].concat(args.map(stringify)).join(' '))
   }
 }

@@ -18,11 +18,10 @@ import { Operator } from '../../'
 import { shallowMerge, pick, toProp, shallowEqual } from '../utils'
 import log from '../console'
 import compose from 'basic-compose'
-import { cursor, into } from 'basic-cursors'
+import cursor, { into } from 'basic-cursors'
 import { Observable, combineLatest, from, merge, empty, identity } from 'rxjs'
 import {
   catchError,
-  concatMap,
   delay,
   distinctUntilChanged,
   filter,
@@ -31,6 +30,7 @@ import {
   pluck,
   share,
   startWith,
+  switchAll,
   switchMap,
   tap
 } from 'rxjs/operators'
@@ -61,18 +61,23 @@ export default compose(
   distinctUntilChanged<ButtonViewProps>(shallowEqual), // only render when necessary
   map(into('icon')(iconFromDisabled)),
   pickDistinct('disabled', 'onClick', 'icons'), // clean-up
+  tap(log('copy-button:toggle-disable-on-success:')),
   withToggleDisabledOnSuccess,
-  withEventHandler('click')(concatMap(mapInto('success')(doCopyToClipboard))),
+  withEventHandler('click')(switchMap(doCopyToClipboard)),
   tap(log('copy-button:props:')),
   map(shallowMerge(DEFAULT_PROPS)) // icons are not deep-copied
 ) as Operator<CopyButtonProps,ButtonViewProps>
 
 function doCopyToClipboard
 <P extends { event: E, value: string }, E extends { payload: MouseEvent }>(
-  { event, value }: P
-): Observable<boolean> {
+  props: P
+): Observable<P & { success: true }> {
+  const { event, value } = props
   event.payload.preventDefault()
-  return from(copyToClipboard(value)).pipe(mapTo(true), catchError(empty))
+  return from(copyToClipboard(value)).pipe(
+    mapTo({ ...(<object>props), success: true } as P & { success: true }),
+    catchError(empty)
+  )
 }
 
 function withToggleDisabledOnSuccess(props$) {
