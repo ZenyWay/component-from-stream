@@ -14,20 +14,32 @@
  */
 ;
 import createComponentFromStreamFactory, {
-  ComponentFromStreamFactory, ComponentFromStreamConstructor, Operator
+  ComponentFromStreamFactory,
+  ComponentFromStreamConstructor,
+  Operator as GenericOperator,
+  DispatchOperator as GenericDispatchOperator
 } from '../'
 import { InfernoChildren, Component } from 'inferno'
-import { from } from 'rxjs'
+import { from, Observable } from 'rxjs'
 
 export {
   ComponentFromStreamFactory,
   ComponentFromStreamConstructor,
   Component,
-  InfernoChildren,
-  Operator
+  InfernoChildren
 }
+
+export type Operator<I={},O=I> = GenericOperator<I,O,Observable<I>,Observable<O>>
+export type DispatchOperator<A=void,I={},O=I> =
+  GenericDispatchOperator<A,I,O,Observable<I>,Observable<O>>
 
 export default createComponentFromStreamFactory<Component<any,any>,InfernoChildren>(
   Component,
   from
 )
+
+export function compose <I,O>(...operators: Operator<any,any>[]): Operator<I,O> {
+  return function (q$: Observable<I>): Observable<O> {
+    return q$.pipe(...operators)
+  }
+}

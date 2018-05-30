@@ -47,7 +47,7 @@ by composing it with additional unit behaviours.
 # Example
 see the full [example](./example/index.tsx) in this directory.<br/>
 run the example in your browser locally with `npm run example`
-or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.14.0/example/index.html).
+or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.15.0/example/index.html).
 
 this example demonstrates how to implement `component-from-stream` Components
 described in terms of their view and composed behaviour.<br/>
@@ -58,18 +58,37 @@ operator module.
 `component-from-stream.ts`
 ```ts
 import createComponentFromStreamFactory, {
-  ComponentFromStreamFactory, ComponentFromStreamConstructor
-} from '../'
+  ComponentFromStreamFactory,
+  ComponentFromStreamConstructor
+  Operator as GenericOperator,
+  DispatchOperator as GenericDispatchOperator
+} from 'component-from-stream'
 import { InfernoChildren, Component } from 'inferno'
 import { from } from 'rxjs'
 
-export { ComponentFromStreamFactory, ComponentFromStreamConstructor, Component, InfernoChildren }
+export {
+  ComponentFromStreamFactory,
+  ComponentFromStreamConstructor,
+  Component,
+  InfernoChildren
+}
+
+export type Operator<I={},O=I> = GenericOperator<I,O,Observable<I>,Observable<O>>
+export type DispatchOperator<A=void,I={},O=I> =
+  GenericDispatchOperator<A,I,O,Observable<I>,Observable<O>>
 
 // export a component-from-stream factory based on Inferno and RxJS
 export default createComponentFromStreamFactory<Component<any,any>,InfernoChildren>(
   Component,
   from
 )
+
+// export helper to compose operators
+export function compose <I,O>(...operators: Operator<any,any>[]): Operator<I,O> {
+  return function (q$: Observable<I>): Observable<O> {
+    return q$.pipe(...operators)
+  }
+}
 ```
 
 `copy-button/index.ts`
@@ -77,7 +96,7 @@ export default createComponentFromStreamFactory<Component<any,any>,InfernoChildr
 import Button from './view'
 import copyButtonBehaviour from './behaviour'
 import componentFromStream, {
-  ComponentFromStreamConstructor, Component, InfernoChildren
+  ComponentFromStreamConstructor, Component, InfernoChildren, Operator
 } from '../component-from-stream'
 
 export default componentFromStream(Button, copyButtonBehaviour)
@@ -85,26 +104,25 @@ export default componentFromStream(Button, copyButtonBehaviour)
 
 `copy-button/behaviour.ts`
 ```ts
+import { ButtonViewProps } from './view'
+import { compose } from '../component-from-stream'
 import { shallowEqual, shallowMerge, pick, log } from '../utils'
 import { into } from 'basic-cursors'
 import withEventHandler from 'rx-with-event-handler'
+import { Observable } from 'rxjs'
 import { distinctUntilChanged, map, switchMap, tap } from 'rxjs/operators'
 
-export default function (
-  props$: Observable<CopyButtonProps>
-): Observable<ButtonViewProps> {
-  return props$.pipe(
-    map(shallowMerge(DEFAULT_PROPS)), // icons are not deep-copied
-    tap(log('copy-button:props:')),
-    withEventHandler('click')(switchMap(doCopyToClipboard)),
-    withToggleDisabledOnSuccess,
-    tap(log('copy-button:toggle-disable-on-success:')),
-    pickDistinct('disabled', 'onClick', 'icons'), // clean-up
-    map(into('icon')(iconFromDisabled)),
-    distinctUntilChanged(shallowEqual), // only render when necessary
-    tap(log('copy-button:view-props:')),
-  )
-}
+export default compose<CopyButtonProps,ButtonViewProps>(
+  map(shallowMerge(DEFAULT_PROPS)), // icons are not deep-copied
+  tap(log('copy-button:props:')),
+  withEventHandler('click')(switchMap(doCopyToClipboard)),
+  withToggleDisabledOnSuccess,
+  tap(log('copy-button:toggle-disable-on-success:')),
+  pickDistinct('disabled', 'onClick', 'icons'), // clean-up
+  map(into('icon')(iconFromDisabled)),
+  distinctUntilChanged(shallowEqual), // only render when necessary
+  tap(log('copy-button:view-props:')),
+)
 
 function doCopyToClipboard
 <P extends { event: E, value: string }, E extends { payload: MouseEvent }>(
@@ -120,9 +138,10 @@ function doCopyToClipboard
 }
 
 function pickDistinct <P={}>(...keys: (keyof P)[]) {
-	return function (props$: Observable<P>): Observable<Pick<P, keyof P>> {
-    return props$.pipe(map(pick(...keys)), distinctUntilChanged(shallowEqual))
-  }
+  return compose<P,Pick<P,keyof P>>(
+    map(pick(...keys)),
+    distinctUntilChanged(shallowEqual)
+  )
 }
 
 function iconFromDisabled ({ disabled, icons }: any) {
@@ -195,14 +214,15 @@ export default function createComponentFromStreamFactory<C extends Component<N, 
 ): ComponentFromStreamFactory<C, N>
 
 export interface ComponentFromStreamFactory<C extends Component<N, any, any>, N> {
-  <P = {}, Q = P, A = P>(
+  <P = {}, Q = P>(
     render: (props: Q) => N,
     operator: Operator<P, A>
   ): ComponentFromStreamConstructor<C, N>
   <P = {}, Q = P, A = P>(
     render: (props: Q) => N,
     onProps: DispatcherFactory<P, A>,
-    ...operators: GenericControlOperator<A>[]
+    operator: DispatchOperator<A, A, any>,
+    ...operators: DispatchOperator<A, any, any>[]
   ): ComponentFromStreamConstructor<C, N>
 }
 
@@ -239,20 +259,25 @@ export interface PropsState<Q> {
 export declare type DispatcherFactory<P, A = P> =
 <S extends Subscribable<A>>(dispatch: (v: A) => void) => (props: P) => void
 
-export declare type Operator<I, O> =
-<U extends Subscribable<I>, V extends Subscribable<O>>(source$: U) => V
+export type Operator<
+  I={},
+  O=I,
+  U extends Subscribable<I> = Subscribable<I>,
+  V extends Subscribable<O> = Subscribable<O>
+> = (source$: U) => V
 
-export declare type GenericControlOperator<A> = <
-  I,
-  O = I,
-  S extends Subscribable<I> = Subscribable<I>,
-  T extends Subscribable<O> = Subscribable<O>
->(
-  source$: S,
+export type DispatchOperator<
+  A=void,
+  I={},
+  O=I,
+  Q extends Subscribable<I> = Subscribable<I>,
+  S extends Subscribable<O> = Subscribable<O>
+> = (
+  source$: Q,
   dispatch?: StreamableDispatcher<A>,
   fromESObservable?: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
   toESObservable?: <T, O extends Subscribable<T>>(stream: O) => Subscribable<T>
-) => T
+) => S
 
 export interface StreamableDispatcher<A, S extends Subscribable<A> = Subscribable<A>> {
   next(val: A): void

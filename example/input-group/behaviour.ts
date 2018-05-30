@@ -14,6 +14,7 @@
  */
 ;
 import { InputGroupViewProps, AddonButton } from './view'
+import { compose } from '../component-from-stream'
 import log from '../console'
 import withEventHandler from 'rx-with-event-handler'
 import { into } from 'basic-cursors'
@@ -33,17 +34,13 @@ const VIEW_PROPS = [
   'type', 'value', 'onInput', 'children', 'placeholder', 'disabled'
 ] as (keyof InputGroupViewProps)[]
 
-export default function (
-  props$: Observable<InputGroupWithButtonProps>
-): Observable<InputGroupViewProps> {
-  return props$.pipe(
-    tap(log('input-group-with-button:props:')),
-    withEventHandler('input')(map(into<any>('value')(valueFromInputEvent))),
-    map(pick<keyof InputGroupViewProps>(...VIEW_PROPS)), // clean-up
-    tap(log('input-group-with-button:view-props:')),
-    distinctUntilChanged<InputGroupViewProps>(shallowEqual)
-  )
-}
+export default compose<InputGroupWithButtonProps,InputGroupViewProps>(
+  tap(log('input-group-with-button:props:')),
+  withEventHandler('input')(map(into<any>('value')(valueFromInputEvent))),
+  map(pick<keyof InputGroupViewProps>(...VIEW_PROPS)), // clean-up
+  tap(log('input-group-with-button:view-props:')),
+  distinctUntilChanged<InputGroupViewProps>(shallowEqual)
+)
 
 function valueFromInputEvent({ event }) {
   return event.payload.target.value

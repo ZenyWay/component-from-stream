@@ -75,15 +75,15 @@
 import createSubject, { Subject, Subscribable, Subscription } from 'rx-subject'
 
 export interface ComponentFromStreamFactory<C extends Component<N,any,any>,N> {
-  <P={},Q=P,A=P>(
+  <P={},Q=P>(
     render: (props: Q) => N,
-    operator: Operator<P,A>
+    operator: Operator<P,Q>
   ): ComponentFromStreamConstructor<C,N>
   <P={},Q=P,A=P>(
     render: (props: Q) => N,
     onProps: DispatcherFactory<P,A>,
-    operator: DispatchOperator<A>,
-    ...operators: DispatchOperator<A>[]
+    operator: DispatchOperator<A,A,any>,
+    ...operators: DispatchOperator<A,any,any>[]
   ): ComponentFromStreamConstructor<C,N>
 }
 
@@ -118,27 +118,28 @@ export interface Component<N,P={},S={}> {
 
 export interface PropsState<Q> { props: Q }
 
-export type DispatcherFactory<P,A=P> = <S extends Subscribable<A>>
-  (dispatch: (v: A) => void) => (props: P) => void
+export type DispatcherFactory<P,A=P> =
+  <S extends Subscribable<A>>(dispatch: (v: A) => void) => (props: P) => void
 
 export type Operator<
-  I,
-  O,
+  I={},
+  O=I,
   U extends Subscribable<I> = Subscribable<I>,
   V extends Subscribable<O> = Subscribable<O>
 > = (source$: U) => V
 
-export type DispatchOperator<A> = <
-  I,
-  O = I,
-  S extends Subscribable<I> = Subscribable<I>,
-  T extends Subscribable<O> = Subscribable<O>
->(
-  source$: S,
+export type DispatchOperator<
+  A=void,
+  I={},
+  O=I,
+  Q extends Subscribable<I> = Subscribable<I>,
+  S extends Subscribable<O> = Subscribable<O>
+> = (
+  source$: Q,
   dispatch?: StreamableDispatcher<A>,
   fromESObservable?: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
   toESObservable?: <T, O extends Subscribable<T>>(stream: O) => Subscribable<T>
-) => T
+) => S
 
 export interface StreamableDispatcher<A,S extends Subscribable<A> = Subscribable<A>> {
   next (val: A): void
@@ -206,7 +207,7 @@ export default function createComponentFromStreamFactory <C extends Component<N,
           from: Array.prototype.push.bind(stack),
           source$
         }
-        let props$ = source$
+        let props$: Subscribable<any> = source$
         for (const operator of operators) {
           props$ = operator(props$, dispatch, fromES, toES)
         }

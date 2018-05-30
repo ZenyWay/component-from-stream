@@ -14,6 +14,7 @@
  */
 ;
 import { ButtonViewProps } from './view'
+import { compose } from '../component-from-stream'
 import { shallowMerge, pick, toProp, shallowEqual } from '../utils'
 import log from '../console'
 import { into } from 'basic-cursors'
@@ -53,21 +54,17 @@ export interface ButtonIcons {
   disabled: string, enabled: string
 }
 
-export default function (
-  props$: Observable<CopyButtonProps>
-): Observable<ButtonViewProps> {
-  return props$.pipe(
-    map(shallowMerge(DEFAULT_PROPS)), // icons are not deep-copied
-    tap(log('copy-button:props:')),
-    withEventHandler('click')(switchMap(doCopyToClipboard)),
-    withToggleDisabledOnSuccess,
-    tap(log('copy-button:toggle-disable-on-success:')),
-    pickDistinct('disabled', 'onClick', 'icons'), // clean-up
-    map(into('icon')(iconFromDisabled)),
-    distinctUntilChanged<ButtonViewProps>(shallowEqual), // only render when necessary
-    tap(log('copy-button:view-props:')),
-  )
-}
+export default compose<CopyButtonProps,ButtonViewProps>(
+  map(shallowMerge(DEFAULT_PROPS)), // icons are not deep-copied
+  tap(log('copy-button:props:')),
+  withEventHandler('click')(switchMap(doCopyToClipboard)),
+  withToggleDisabledOnSuccess,
+  tap(log('copy-button:toggle-disable-on-success:')),
+  pickDistinct('disabled', 'onClick', 'icons'), // clean-up
+  map(into('icon')(iconFromDisabled)),
+  distinctUntilChanged<ButtonViewProps>(shallowEqual), // only render when necessary
+  tap(log('copy-button:view-props:')),
+)
 
 function doCopyToClipboard
 <P extends { event: E, value: string }, E extends { payload: MouseEvent }>(
@@ -96,9 +93,10 @@ function withToggleDisabledOnSuccess(props$) {
 }
 
 function pickDistinct <P={}>(...keys: (keyof P)[]) {
-	return function (props$: Observable<P>): Observable<Pick<P, keyof P>> {
-    return props$.pipe(map(pick(...keys)), distinctUntilChanged(shallowEqual))
-  }
+  return compose<P,Pick<P,keyof P>>(
+    map(pick(...keys)),
+    distinctUntilChanged(shallowEqual)
+  )
 }
 
 function iconFromDisabled ({ disabled, icons }: any) {
