@@ -14,12 +14,18 @@
  */
 ;
 import createComponentFromStreamFactory, {
-  ComponentFromStreamFactory, ComponentFromStreamConstructor
+  ComponentFromStreamFactory, ComponentFromStreamConstructor, Operator
 } from '../'
 import { InfernoChildren, Component } from 'inferno'
 import { from } from 'rxjs'
 
-export { ComponentFromStreamFactory, ComponentFromStreamConstructor, Component, InfernoChildren }
+export {
+  ComponentFromStreamFactory,
+  ComponentFromStreamConstructor,
+  Component,
+  InfernoChildren,
+  Operator
+}
 
 export default createComponentFromStreamFactory<Component<any,any>,InfernoChildren>(
   Component,

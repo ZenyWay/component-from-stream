@@ -1,6 +1,6 @@
 {
   "name": "component-from-stream",
-  "version": "0.13.1",
+  "version": "0.14.0",
   "description": "component-from-stream on steroids: create a React-like component from any React-compatible library, that sources its props from an observable stream and supports middleware.",
   "main": "dist/index.min.js",
   "typings": "dist/index.d.ts",
@@ -11,7 +11,7 @@
     "postdist": "npm run uglify",
     "example": "npm run example:bundle && npm run symbol-observable-polyfill && npm run example:serve",
     "example:serve": "http-server -c-1 -i -e html -o -p 6510 example",
-    "preexample:bundle": "rimraf spec/example/*.js && npm run dist",
+    "preexample:bundle": "rimraf example/*.js && npm run dist",
     "example:bundle": "browserify example/index.tsx -p [ tsify --project example ] -g uglifyify -p bundle-collapser/plugin -p [ common-shakeify -v ] | uglifyjs -c -m toplevel -o example/index.js",
     "prepublish": "npm run dist",
     "test": "echo \"Error: no test specified\" && exit 1",

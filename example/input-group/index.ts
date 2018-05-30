@@ -16,7 +16,10 @@
 import InputGroupWithButton from './view'
 import withInputGroupBehaviour from './behaviour'
 import componentFromStream, {
-  ComponentFromStreamConstructor, Component, InfernoChildren
+  ComponentFromStreamConstructor, Component, InfernoChildren, Operator
 } from '../component-from-stream'
 
-export default componentFromStream(InputGroupWithButton, withInputGroupBehaviour)
+export default componentFromStream(
+  InputGroupWithButton,
+  withInputGroupBehaviour
+)

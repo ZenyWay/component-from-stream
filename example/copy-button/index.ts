@@ -16,7 +16,7 @@
 import renderButton from './view'
 import copyButtonBehaviour from './behaviour'
 import componentFromStream, {
-  ComponentFromStreamConstructor, Component, InfernoChildren
+  ComponentFromStreamConstructor, Component, InfernoChildren, Operator
 } from '../component-from-stream'
 
 export default componentFromStream(renderButton, copyButtonBehaviour)

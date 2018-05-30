@@ -1,8 +1,8 @@
-# component-from-stream on steroids
+# component-from-stream on steroids (< 1k bytes gzip)
 [![NPM](https://nodei.co/npm/component-from-stream.png?compact=true)](https://nodei.co/npm/component-from-stream/)
 
 create a React-like component from any React-compatible library,
-that sources its props from an observable stream and supports middleware.
+that sources its props from an observable stream.
 
 based on [component-from-stream](https://github.com/acdlite/recompose/blob/master/docs/API.md#componentfromstream)
 from [recompose](https://npmjs.com/package/recompose),
@@ -10,12 +10,12 @@ with the following enhancements:
 * compatible with any [`React`](https://reactjs.org)-compatible library,<br/>
 so long as it provides a [`React`](https://reactjs.org)-like `Component` class,
 e.g. [`PREACT`](https://preactjs.com/) or [`Inferno`](https://infernojs.org/).
-* support for any number of middleware in the dispatching path,<br/>
+* support for operators that may dispatch back into source stream,<br/>
 e.g. [`component-from-stream-redux`](https://npmjs.com/package/component-from-stream-redux).<br/>
 more info in the [API section](#API).
 * support for a custom `props` dispatcher instead of the default dispatcher,<br/>
 e.g. to emit [FSAs](https://www.npmjs.com/package/flux-standard-action)
-into the [`component-from-stream-redux`](https://npmjs.com/package/component-from-stream-redux) middleware.
+into the [`component-from-stream-redux`](https://npmjs.com/package/component-from-stream-redux) operator.
 * [separation](#separation) of stateless view from stateful reactive behaviour.
 * life-cycle management and gated rendering from within
 the component's reactive behaviour:
@@ -47,13 +47,13 @@ by composing it with additional unit behaviours.
 # Example
 see the full [example](./example/index.tsx) in this directory.<br/>
 run the example in your browser locally with `npm run example`
-or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.13.1/example/index.html).
+or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.14.0/example/index.html).
 
 this example demonstrates how to implement `component-from-stream` Components
 described in terms of their view and composed behaviour.<br/>
 for an example of a redux-like setup, see that in the
 [`component-from-stream-redux`](https://npmjs.com/package/component-from-stream-redux)
-middleware module.
+operator module.
 
 `component-from-stream.ts`
 ```ts
@@ -86,28 +86,43 @@ export default componentFromStream(Button, copyButtonBehaviour)
 `copy-button/behaviour.ts`
 ```ts
 import { shallowEqual, shallowMerge, pick, log } from '../utils'
-import compose from 'basic-compose'
 import { into } from 'basic-cursors'
 import withEventHandler from 'rx-with-event-handler'
-import { distinctUntilChanged, map, tap } from 'rxjs/operators'
+import { distinctUntilChanged, map, switchMap, tap } from 'rxjs/operators'
 
-export default compose(
-  tap(log('copy-button:view-props:')),
-  distinctUntilChanged(shallowEqual), // only render when necessary
-  map(into('icon')(iconFromDisabled)),
-  pickDistinct('disabled', 'onClick', 'icons'), // clean-up
-  withToggleDisabledOnSuccess,
-  withEventHandler('click')(map(into('success')(doCopyToClipboard))),
-  map(shallowMerge(DEFAULT_PROPS)) // icons are not deep-copied
-)
-
-function doCopyToClipboard({ event, value }) {
-  event.payload.preventDefault()
-  return copyToClipboard(value) //true on success
+export default function (
+  props$: Observable<CopyButtonProps>
+): Observable<ButtonViewProps> {
+  return props$.pipe(
+    map(shallowMerge(DEFAULT_PROPS)), // icons are not deep-copied
+    tap(log('copy-button:props:')),
+    withEventHandler('click')(switchMap(doCopyToClipboard)),
+    withToggleDisabledOnSuccess,
+    tap(log('copy-button:toggle-disable-on-success:')),
+    pickDistinct('disabled', 'onClick', 'icons'), // clean-up
+    map(into('icon')(iconFromDisabled)),
+    distinctUntilChanged(shallowEqual), // only render when necessary
+    tap(log('copy-button:view-props:')),
+  )
 }
 
-function pickDistinct(...keys) {
-  return compose(distinctUntilChanged(shallowEqual), map(pick(...keys)))
+function doCopyToClipboard
+<P extends { event: E, value: string }, E extends { payload: MouseEvent }>(
+  props: P
+): Observable<P & { success: true }> {
+  const { event, value } = props
+  event.payload.preventDefault()
+
+  return from(copyToClipboard(value)).pipe(
+    mapTo({ ...(<object>props), success: true } as P & { success: true }),
+    catchError(empty) // do nothing on error
+  )
+}
+
+function pickDistinct <P={}>(...keys: (keyof P)[]) {
+	return function (props$: Observable<P>): Observable<Pick<P, keyof P>> {
+    return props$.pipe(map(pick(...keys)), distinctUntilChanged(shallowEqual))
+  }
 }
 
 function iconFromDisabled ({ disabled, icons }: any) {
@@ -115,23 +130,15 @@ function iconFromDisabled ({ disabled, icons }: any) {
 }
 // ...
 ```
-each argument supplied to the above `compose` function is a reactive operator
-which implements a specific unit behaviour by generating an output stream
-of `props` from an input stream of `props`.
-
-the unit behaviours are composed from bottom to top:
-`props` are processed from outside to inside,
-i.e. from component `props` to view `props`.
-
-e.g. `withEventHandler('click')` from [`rx-with-event-handler`](https://npmjs.com/package/rx-with-event-handler/)
+`withEventHandler('click')` from [`rx-with-event-handler`](https://npmjs.com/package/rx-with-event-handler/)
 adds an `onClick` prop and emits the extended `props` object
 whenever it receives a new input.
 whenever the `onClick` handler is called (from the rendered `Component`),
 it also adds an `event` prop to the emitted `props` object,
 and pipes the latter through the given event handler operator,
-in this case `map(into('success')(doCopyToClipboard))`,
+in this case `switchMap(doCopyToClipboard)`,
 which copies the `value` prop to the clipboard
-and sets a `success` prop to `true` on success, `false` otherwise.
+and adds a `success` prop set to `true` on success.
 
 the resulting event can then be further processed by a downstream operator,
 e.g. `withToggleDisabledOnSuccess`, which toggles the boolean `disabled` prop
@@ -157,7 +164,7 @@ the resulting `component-from-stream` factory being exposed to the project's
 other modules.
 
 the above example illustrates the traditional instatiation of a `component-from-stream`,
-with a reactive operator that maps incoming props to view props.
+with a single reactive operator that maps incoming props to view props.
 
 the component factory may however be given additional optional arguments,
 for structuring more complex behaviours into self-documenting code:
@@ -165,7 +172,8 @@ for structuring more complex behaviours into self-documenting code:
 e.g. to add default props, event handlers,
 and/or to dispatch an [FSA](https://www.npmjs.com/package/flux-standard-action)
 object with props as payload.
-* `...middlewares`: rest arguments are middleware for dispatching.
+* `...operators`: rest arguments are operators
+that may dispatch back into source stream.
 see the [`component-from-stream-redux`](https://npmjs.com/package/component-from-stream-redux)
 middleware module for an example middleware implementation.
 
@@ -173,14 +181,13 @@ middleware module for an example middleware implementation.
 import { Subscribable } from 'rx-subject'
 export { Subscribable }
 
-export default function createComponentFromStreamFactory
-<C extends Component<N, any, any>, N>(
+export default function createComponentFromStreamFactory<C extends Component<N, any, any>, N>(
   ComponentCtor: new (props: any, context?: any) => C & Component<N, any, any>,
   fromESObservable: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
   opts?: Partial<ComponentFromStreamOptions>
 ): ComponentFromStreamFactory<C, N>
-export default function createComponentFromStreamFactory
-<C extends Component<N, any, any>, N>(
+
+export default function createComponentFromStreamFactory<C extends Component<N, any, any>, N>(
   ComponentCtor: new (props: any, context?: any) => C & Component<N, any, any>,
   fromESObservable: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
   toESObservable: <T, O extends Subscribable<T>>(stream: O) => Subscribable<T>,
@@ -190,33 +197,27 @@ export default function createComponentFromStreamFactory
 export interface ComponentFromStreamFactory<C extends Component<N, any, any>, N> {
   <P = {}, Q = P, A = P>(
     render: (props: Q) => N,
-    operator?: Operator<A, Q>,
-    onprops?: PropsDispatcherFactory<P, A>
+    operator: Operator<P, A>
   ): ComponentFromStreamConstructor<C, N>
-  <P = {}, A = P, Q = P, S = void>(
+  <P = {}, Q = P, A = P>(
     render: (props: Q) => N,
-    operator: Operator<S, Q>,
-    onprops: PropsDispatcherFactory<P, A>,
-    ...middlewares: Middleware<A>[]
+    onProps: DispatcherFactory<P, A>,
+    ...operators: GenericControlOperator<A>[]
   ): ComponentFromStreamConstructor<C, N>
 }
 
 export interface ComponentFromStreamOptions {}
 
-export interface ComponentFromStreamConstructor
-<C extends Component<N, any, any>, N> {
+export interface ComponentFromStreamConstructor<C extends Component<N, any, any>, N> {
   new <P = {}, Q = P>(props?: P, context?: any): C & ComponentFromStream<N, P, Q>
 }
 
 export interface ComponentFromStream<N, P = {}, Q = P>
-extends Component<N, P, ViewPropsState<Q>> {
+extends Component<N, P, PropsState<Q>> {
   componentWillMount(): void
   componentWillReceiveProps(nextProps: Readonly<P>, nextContext: any): void
   componentWillUnmount(): void
-  shouldComponentUpdate(
-    props: Readonly<P>,
-    state: Readonly<ViewPropsState<Q>>
-  ): boolean
+  shouldComponentUpdate(props: Readonly<P>, state: Readonly<PropsState<Q>>): boolean
 }
 
 export interface ComponentConstructor<N> {
@@ -225,34 +226,43 @@ export interface ComponentConstructor<N> {
 
 export interface Component<N, P = {}, S = {}> {
   setState(state: Reducer<S, P> | Partial<S>, cb?: () => void): void
-  render(props?: P, state?: S, context?: any): N|void
+  render(props?: P, state?: S, context?: any): N | void
   props: Readonly<P>
   state: Readonly<S | null>
   context: any
 }
 
-export interface ViewPropsState<Q> {
+export interface PropsState<Q> {
   props: Q
 }
 
+export declare type DispatcherFactory<P, A = P> =
+<S extends Subscribable<A>>(dispatch: (v: A) => void) => (props: P) => void
+
 export declare type Operator<I, O> =
-  <S extends Subscribable<I>, T extends Subscribable<O>>(source$: S) => T
+<U extends Subscribable<I>, V extends Subscribable<O>>(source$: U) => V
 
-export declare type PropsDispatcherFactory<P, A = P> =
-  <S extends Subscribable<A>>(
-    dispatch: (v: A) => void,
-    source$?: S
-  ) => (props: P) => void
-
-export declare type Middleware<I> = (
-  next: (...args: any[]) => void, // next middleware
-  dispatch: (...args: any[]) => void, // lead dispatcher (head of middlewares)
-  source$?: Subscribable<I>, // raw ES Observable
+export declare type GenericControlOperator<A> = <
+  I,
+  O = I,
+  S extends Subscribable<I> = Subscribable<I>,
+  T extends Subscribable<O> = Subscribable<O>
+>(
+  source$: S,
+  dispatch?: StreamableDispatcher<A>,
   fromESObservable?: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
   toESObservable?: <T, O extends Subscribable<T>>(stream: O) => Subscribable<T>
-) => (...args: any[]) => void
+) => T
+
+export interface StreamableDispatcher<A, S extends Subscribable<A> = Subscribable<A>> {
+  next(val: A): void
+  from<E extends Subscribable<A>>(source$: E): void
+  source$: S
+}
 
 export declare type Reducer<A, V> = (acc: A, val: V) => A
+
+export declare function identity<T>(v: T): T
 ```
 
 # `Symbol.observable`

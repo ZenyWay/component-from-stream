@@ -15,11 +15,10 @@
 ;
 import { InputGroupViewProps, AddonButton } from './view'
 import log from '../console'
-import compose from 'basic-compose'
-import { Operator } from '../../'
 import withEventHandler from 'rx-with-event-handler'
 import { into } from 'basic-cursors'
 import { pick, when, hasEvent, shallowEqual } from '../utils'
+import { Observable } from 'rxjs'
 import { distinctUntilChanged, map, tap } from 'rxjs/operators'
 
 export interface InputGroupWithButtonProps {
@@ -34,13 +33,17 @@ const VIEW_PROPS = [
   'type', 'value', 'onInput', 'children', 'placeholder', 'disabled'
 ] as (keyof InputGroupViewProps)[]
 
-export default compose(
-  tap(log('input-group-with-button:view-props:')),
-  distinctUntilChanged<InputGroupViewProps>(shallowEqual),
-  map(pick<keyof InputGroupViewProps>(...VIEW_PROPS)), // clean-up
-  withEventHandler('input')(map(into<any>('value')(valueFromInputEvent))),
-  tap(log('input-group-with-button:props:')),
-) as Operator<InputGroupWithButtonProps,InputGroupViewProps>
+export default function (
+  props$: Observable<InputGroupWithButtonProps>
+): Observable<InputGroupViewProps> {
+  return props$.pipe(
+    tap(log('input-group-with-button:props:')),
+    withEventHandler('input')(map(into<any>('value')(valueFromInputEvent))),
+    map(pick<keyof InputGroupViewProps>(...VIEW_PROPS)), // clean-up
+    tap(log('input-group-with-button:view-props:')),
+    distinctUntilChanged<InputGroupViewProps>(shallowEqual)
+  )
+}
 
 function valueFromInputEvent({ event }) {
   return event.payload.target.value

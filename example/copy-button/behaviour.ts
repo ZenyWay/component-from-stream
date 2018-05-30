@@ -14,12 +14,10 @@
  */
 ;
 import { ButtonViewProps } from './view'
-import { Operator } from '../../'
 import { shallowMerge, pick, toProp, shallowEqual } from '../utils'
 import log from '../console'
-import compose from 'basic-compose'
-import cursor, { into } from 'basic-cursors'
-import { Observable, combineLatest, from, merge, empty, identity } from 'rxjs'
+import { into } from 'basic-cursors'
+import { Observable, combineLatest, from, merge, empty } from 'rxjs'
 import {
   catchError,
   delay,
@@ -30,7 +28,6 @@ import {
   pluck,
   share,
   startWith,
-  switchAll,
   switchMap,
   tap
 } from 'rxjs/operators'
@@ -56,17 +53,21 @@ export interface ButtonIcons {
   disabled: string, enabled: string
 }
 
-export default compose(
-  tap(log('copy-button:view-props:')),
-  distinctUntilChanged<ButtonViewProps>(shallowEqual), // only render when necessary
-  map(into('icon')(iconFromDisabled)),
-  pickDistinct('disabled', 'onClick', 'icons'), // clean-up
-  tap(log('copy-button:toggle-disable-on-success:')),
-  withToggleDisabledOnSuccess,
-  withEventHandler('click')(switchMap(doCopyToClipboard)),
-  tap(log('copy-button:props:')),
-  map(shallowMerge(DEFAULT_PROPS)) // icons are not deep-copied
-) as Operator<CopyButtonProps,ButtonViewProps>
+export default function (
+  props$: Observable<CopyButtonProps>
+): Observable<ButtonViewProps> {
+  return props$.pipe(
+    map(shallowMerge(DEFAULT_PROPS)), // icons are not deep-copied
+    tap(log('copy-button:props:')),
+    withEventHandler('click')(switchMap(doCopyToClipboard)),
+    withToggleDisabledOnSuccess,
+    tap(log('copy-button:toggle-disable-on-success:')),
+    pickDistinct('disabled', 'onClick', 'icons'), // clean-up
+    map(into('icon')(iconFromDisabled)),
+    distinctUntilChanged<ButtonViewProps>(shallowEqual), // only render when necessary
+    tap(log('copy-button:view-props:')),
+  )
+}
 
 function doCopyToClipboard
 <P extends { event: E, value: string }, E extends { payload: MouseEvent }>(
@@ -94,8 +95,10 @@ function withToggleDisabledOnSuccess(props$) {
   )
 }
 
-function pickDistinct(...keys) {
-	return compose(distinctUntilChanged(shallowEqual), map(pick(...keys)))
+function pickDistinct <P={}>(...keys: (keyof P)[]) {
+	return function (props$: Observable<P>): Observable<Pick<P, keyof P>> {
+    return props$.pipe(map(pick(...keys)), distinctUntilChanged(shallowEqual))
+  }
 }
 
 function iconFromDisabled ({ disabled, icons }: any) {
@@ -106,13 +109,4 @@ function lag <S>(source$: Observable<S>) {
   return function (timeout: number) {
     return source$.pipe(delay(timeout))
   }
-}
-
-function mapInto (key: string) {
-  return cursor(
-    identity,
-    function <V,O>(v$: Observable<V>, o: O): Observable<O&{[k:string]:V}> {
-      return v$.pipe(map(v => Object.assign({}, o, { [key]: v })))
-    }
-  )
 }
