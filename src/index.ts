@@ -81,7 +81,7 @@ export interface ComponentFromStreamFactory<C extends Component<N,any,any>,N> {
   ): ComponentFromStreamConstructor<C,N>
   <P={},Q=P,A=P>(
     render: (props: Q) => N,
-    onProps: DispatcherFactory<P,A>,
+    project: Mapper<P,A>,
     operator: DispatchOperator<A,A,any>,
     ...operators: DispatchOperator<A,any,any>[]
   ): ComponentFromStreamConstructor<C,N>
@@ -118,8 +118,7 @@ export interface Component<N,P={},S={}> {
 
 export interface PropsState<Q> { props: Q }
 
-export type DispatcherFactory<P,A=P> =
-  <S extends Subscribable<A>>(dispatch: (v: A) => void) => (props: P) => void
+export type Mapper<P,A=P> = (props: P) => A
 
 export type Operator<
   I={},
@@ -177,14 +176,14 @@ export default function createComponentFromStreamFactory <C extends Component<N,
     )
   : function createComponentFromStream <P={},A=P,Q=P,S=void>(
     render: (props: Q) => N,
-    onProps = identity as DispatcherFactory<P,A>|Operator<P,A>,
+    project = identity as Mapper<P,A>|Operator<P,A>,
     ...operators: DispatchOperator<A>[]
   ): ComponentFromStreamConstructor<C,N> {
     return arguments.length === 2
     ? createComponentFromStream( // legacy
       render,
       void 0,
-      onProps as DispatchOperator<A>
+      project as DispatchOperator<A>
     )
     : class ComponentFromStreamClass
       extends (ComponentCtor as ComponentConstructor<N>)
@@ -215,7 +214,8 @@ export default function createComponentFromStreamFactory <C extends Component<N,
         for (const dispatch$ of stack) {
           this._subs.push(toES(dispatch$).subscribe(q.sink))
         }
-        ;(this._onProps = (<DispatcherFactory<P,A>>onProps)(dispatch.next))(this.props)
+        this._dispatch = dispatch.next
+        this._onProps(this.props)
       }
 
       componentWillReceiveProps(props: Readonly<P>) {
@@ -237,7 +237,8 @@ export default function createComponentFromStreamFactory <C extends Component<N,
 
       private _q: Subject<A>
 
-      private _onProps: (props: P) => void
+      private _dispatch: (v: A) => void
+      private _onProps = (props: P) => this._dispatch((<Mapper<P,A>>project)(props))
       private _setProps = (props: Readonly<Q>) => this.setState({ props })
 
       private _subs = [] as Subscription[]

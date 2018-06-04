@@ -29,15 +29,18 @@ export {
   InfernoChildren
 }
 
+// Observable-specific types
 export type Operator<I={},O=I> = GenericOperator<I,O,Observable<I>,Observable<O>>
 export type DispatchOperator<A=void,I={},O=I> =
   GenericDispatchOperator<A,I,O,Observable<I>,Observable<O>>
 
+// component-from-stream factory based on Inferno and RxJS
 export default createComponentFromStreamFactory<Component<any,any>,InfernoChildren>(
   Component,
   from
 )
 
+// helper to compose operators
 export function compose <I,O>(...operators: Operator<any,any>[]): Operator<I,O> {
   return function (q$: Observable<I>): Observable<O> {
     return q$.pipe(...operators)

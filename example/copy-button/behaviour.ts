@@ -94,7 +94,7 @@ function withToggleDisabledOnSuccess(props$) {
 
 function pickDistinct <P={}>(...keys: (keyof P)[]) {
   return compose<P,Pick<P,keyof P>>(
-    map(pick(...keys)),
+    map(pick(...(keys as string[]))),
     distinctUntilChanged(shallowEqual)
   )
 }

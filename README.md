@@ -47,7 +47,7 @@ by composing it with additional unit behaviours.
 # Example
 see the full [example](./example/index.tsx) in this directory.<br/>
 run the example in your browser locally with `npm run example`
-or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.15.0/example/index.html).
+or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.16.0/example/index.html).
 
 this example demonstrates how to implement `component-from-stream` Components
 described in terms of their view and composed behaviour.<br/>
@@ -73,17 +73,18 @@ export {
   InfernoChildren
 }
 
+// Observable-specific types
 export type Operator<I={},O=I> = GenericOperator<I,O,Observable<I>,Observable<O>>
 export type DispatchOperator<A=void,I={},O=I> =
   GenericDispatchOperator<A,I,O,Observable<I>,Observable<O>>
 
-// export a component-from-stream factory based on Inferno and RxJS
+// component-from-stream factory based on Inferno and RxJS
 export default createComponentFromStreamFactory<Component<any,any>,InfernoChildren>(
   Component,
   from
 )
 
-// export helper to compose operators
+// helper to compose operators
 export function compose <I,O>(...operators: Operator<any,any>[]): Operator<I,O> {
   return function (q$: Observable<I>): Observable<O> {
     return q$.pipe(...operators)
@@ -220,7 +221,7 @@ export interface ComponentFromStreamFactory<C extends Component<N, any, any>, N>
   ): ComponentFromStreamConstructor<C, N>
   <P = {}, Q = P, A = P>(
     render: (props: Q) => N,
-    onProps: DispatcherFactory<P, A>,
+    project: Mapper<P, A>,
     operator: DispatchOperator<A, A, any>,
     ...operators: DispatchOperator<A, any, any>[]
   ): ComponentFromStreamConstructor<C, N>
@@ -256,8 +257,7 @@ export interface PropsState<Q> {
   props: Q
 }
 
-export declare type DispatcherFactory<P, A = P> =
-<S extends Subscribable<A>>(dispatch: (v: A) => void) => (props: P) => void
+export declare type Mapper<P, A = P> = (props: P) => A
 
 export type Operator<
   I={},
