@@ -15,13 +15,6 @@
 ;
 import { render } from 'inferno'
 import { createElement } from 'inferno-create-element'
-import CopyButton from './copy-button'
-import InputGroupWithButton from './input-group'
+import Counter from './counter'
 
-function App() {
-  return (
-    <InputGroupWithButton>{CopyButton}</InputGroupWithButton>
-  )
-}
-
-render(<App />, document.getElementById('app'))
+render(<Counter />, document.getElementById('app'))

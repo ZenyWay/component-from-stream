@@ -13,24 +13,26 @@
  * Limitations under the License.
  */
 ;
-import { VNode } from 'inferno'
 import { createElement } from 'inferno-create-element'
+import Button from './button'
 
-export interface ButtonViewProps {
-  disabled: boolean
-  onClick: (event: any) => void
-  icon
+export interface CounterProps extends Map<string,any> {
+  count: number
+  onClickIncrement: (event: MouseEvent) => void
+  onClickDecrement: (event: MouseEvent) => void
 }
 
-export default function render (
-  { disabled = false, onClick, icon = 'fa-question' }: ButtonViewProps
-): VNode {
+export default function ({
+  count,
+  onClickIncrement,
+  onClickDecrement,
+  ...attrs
+}: CounterProps) {
   return (
-    <button
-      className="btn btn-outline-secondary"
-      onClick={onClick}
-      disabled={disabled}>
-      <i className={`fa fa-fw ${icon}`} />
-    </button>
+    <pre {...attrs}>
+      <Button className="ml-1" onClick={onClickIncrement}><b>+</b></Button>
+      <Button className="ml-1" onClick={onClickDecrement}><b>-</b></Button>
+       Count: {count}
+    </pre>
   )
 }

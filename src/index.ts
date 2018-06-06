@@ -75,15 +75,18 @@
 import createSubject, { Subject, Subscribable, Subscription } from 'rx-subject'
 
 export interface ComponentFromStreamFactory<C extends Component<N,any,any>,N> {
+  <P={}>(
+    operator: Operator<P,N>
+  ): ComponentFromStreamConstructor<C,N>
   <P={},Q=P>(
     render: (props: Q) => N,
-    operator: Operator<P,Q>
+    factory: OperatorFactory<P,P,Q>
   ): ComponentFromStreamConstructor<C,N>
   <P={},Q=P,A=P>(
     render: (props: Q) => N,
     project: Mapper<P,A>,
-    operator: DispatchOperator<A,A,any>,
-    ...operators: DispatchOperator<A,any,any>[]
+    operator: OperatorFactory<A,A,any>,
+    ...operators: OperatorFactory<A,any,any>[]
   ): ComponentFromStreamConstructor<C,N>
 }
 
@@ -120,25 +123,24 @@ export interface PropsState<Q> { props: Q }
 
 export type Mapper<P,A=P> = (props: P) => A
 
-export type Operator<
-  I={},
-  O=I,
-  U extends Subscribable<I> = Subscribable<I>,
-  V extends Subscribable<O> = Subscribable<O>
-> = (source$: U) => V
-
-export type DispatchOperator<
+export type OperatorFactory<
   A=void,
   I={},
   O=I,
   Q extends Subscribable<I> = Subscribable<I>,
   S extends Subscribable<O> = Subscribable<O>
 > = (
-  source$: Q,
   dispatch?: StreamableDispatcher<A>,
   fromESObservable?: <T, O extends Subscribable<T>>(stream: Subscribable<T>) => O,
   toESObservable?: <T, O extends Subscribable<T>>(stream: O) => Subscribable<T>
-) => S
+) => Operator<I,O,Q,S>
+
+export type Operator<
+  I={},
+  O=I,
+  Q extends Subscribable<I> = Subscribable<I>,
+  S extends Subscribable<O> = Subscribable<O>
+> = (q$: Q) => S
 
 export interface StreamableDispatcher<A,S extends Subscribable<A> = Subscribable<A>> {
   next (val: A): void
@@ -175,17 +177,33 @@ export default function createComponentFromStreamFactory <C extends Component<N,
       toES // opts
     )
   : function createComponentFromStream <P={},A=P,Q=P,S=void>(
-    render: (props: Q) => N,
-    project = identity as Mapper<P,A>|Operator<P,A>,
-    ...operators: DispatchOperator<A>[]
+    render: ((props: Q) => N)|Operator<P,N>,
+    project?: Mapper<P,A>|OperatorFactory<P,P,Q>,
+    ...factories: OperatorFactory<A,any,any>[]
   ): ComponentFromStreamConstructor<C,N> {
-    return arguments.length === 2
-    ? createComponentFromStream( // legacy
-      render,
-      void 0,
-      project as DispatchOperator<A>
-    )
-    : class ComponentFromStreamClass
+    for (const arg of arguments) {
+      if (typeof arg !== 'function') {
+        throw new TypeError()
+      }
+    }
+    switch (arguments.length) {
+      case 0:
+        throw new TypeError()
+      case 1:
+        return createComponentFromStream(
+          identity as Operator<P,N>,
+          identity as Mapper<P,A>,
+          (() => render) as OperatorFactory<any,P,N>
+        )
+      case 2:
+        return createComponentFromStream(
+          render,
+          identity as Mapper<P,P>,
+          project as OperatorFactory<P,P,Q>
+        )
+      default:
+    }
+    return class ComponentFromStreamClass
       extends (ComponentCtor as ComponentConstructor<N>)
       implements ComponentFromStream<N,P,Q> {
 
@@ -194,7 +212,9 @@ export default function createComponentFromStreamFactory <C extends Component<N,
       props: Readonly<P> // own props
 
       render() {
-        return !this.state.props ? null : render(this.state.props)
+        return !this.state.props
+          ? null
+          : (render as (props: Q) => N)(this.state.props)
       }
 
       componentWillMount() {
@@ -207,8 +227,8 @@ export default function createComponentFromStreamFactory <C extends Component<N,
           source$
         }
         let props$: Subscribable<any> = source$
-        for (const operator of operators) {
-          props$ = operator(props$, dispatch, fromES, toES)
+        for (const factory of factories) {
+          props$ = factory(dispatch, fromES, toES)(props$)
         }
         this._subs = [toES(props$).subscribe(this._setProps)]
         for (const dispatch$ of stack) {

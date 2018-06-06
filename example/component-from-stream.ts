@@ -14,35 +14,23 @@
  */
 ;
 import createComponentFromStreamFactory, {
-  ComponentFromStreamFactory,
-  ComponentFromStreamConstructor,
   Operator as GenericOperator,
-  DispatchOperator as GenericDispatchOperator
+  OperatorFactory as GenericOperatorFactory
 } from '../'
-import { InfernoChildren, Component } from 'inferno'
+import { Component } from 'inferno'
 import { from, Observable } from 'rxjs'
 
-export {
-  ComponentFromStreamFactory,
-  ComponentFromStreamConstructor,
-  Component,
-  InfernoChildren
-}
-
-// Observable-specific types
-export type Operator<I={},O=I> = GenericOperator<I,O,Observable<I>,Observable<O>>
-export type DispatchOperator<A=void,I={},O=I> =
-  GenericDispatchOperator<A,I,O,Observable<I>,Observable<O>>
-
 // component-from-stream factory based on Inferno and RxJS
-export default createComponentFromStreamFactory<Component<any,any>,InfernoChildren>(
-  Component,
-  from
-)
+export default createComponentFromStreamFactory(Component, from)
 
-// helper to compose operators
-export function compose <I,O>(...operators: Operator<any,any>[]): Operator<I,O> {
+// helper for composing operators
+export function pipe <I,O>(...operators: Operator<any,any>[]): Operator<I,O> {
   return function (q$: Observable<I>): Observable<O> {
     return q$.pipe(...operators)
   }
 }
+
+// Observable-specific helper types
+export type Operator<I={},O=I> = GenericOperator<I,O,Observable<I>,Observable<O>>
+export type OperatorFactory<A=void,I={},O=I> =
+  GenericOperatorFactory<A,I,O,Observable<I>,Observable<O>>
