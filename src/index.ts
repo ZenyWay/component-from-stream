@@ -98,7 +98,7 @@ export interface ComponentFromStreamConstructor<C extends Component<N,any,any>,N
 
 export interface ComponentFromStream<N,P={},Q=P>
 extends Component<N,P,PropsState<Q>> {
-  componentWillMount (): void
+  componentDidMount (): void
   componentWillReceiveProps (nextProps: Readonly<P>, nextContext: any): void
   componentWillUnmount (): void
   shouldComponentUpdate (
@@ -211,13 +211,25 @@ export default function createComponentFromStreamFactory <C extends Component<N,
 
       props: Readonly<P> // own props
 
+      private _q: Subject<A>
+
+      private _dispatch: (v: A) => void
+      private _onProps = (props: P) => this._dispatch((<Mapper<P,A>>project)(props))
+      private _setProps = (props: Readonly<Q>) => this.setState({ props })
+
+      private _subs = [] as Subscription[]
+
       render() {
         return !this.state.props
           ? null
           : (render as (props: Q) => N)(this.state.props)
       }
 
-      componentWillMount() {
+      /**
+       * this method sets up the reactive chains and corresponding subscription
+       * => it should only be called once, after instantiation
+       */
+      componentDidMount() {
         const q = (this._q = createSubject())
         const source$ = fromES(q.source$)
         const stack = [] as Subscribable<A>[]
@@ -238,9 +250,13 @@ export default function createComponentFromStreamFactory <C extends Component<N,
         this._onProps(this.props)
       }
 
-      componentWillReceiveProps(props: Readonly<P>) {
-        this._onProps(props)
-      }
+      /**
+       * this method will be deprecated in React@17,
+       * replaced with UNSAFE_componentWillReceiveProps.
+       * keeping both for other frameworks.
+       */
+      componentWillReceiveProps = this._onProps
+      UNSAFE_componentWillReceiveProps = this._onProps
 
       componentWillUnmount () {
         this._q.sink.complete()
@@ -254,14 +270,6 @@ export default function createComponentFromStreamFactory <C extends Component<N,
       shouldComponentUpdate(_: any, state: Readonly<PropsState<Q>>) {
         return state.props !== this.state.props
       }
-
-      private _q: Subject<A>
-
-      private _dispatch: (v: A) => void
-      private _onProps = (props: P) => this._dispatch((<Mapper<P,A>>project)(props))
-      private _setProps = (props: Readonly<Q>) => this.setState({ props })
-
-      private _subs = [] as Subscription[]
     } as ComponentFromStreamConstructor<any,N>
   }
 }

@@ -1,7 +1,7 @@
 {
   "name": "component-from-stream",
-  "version": "0.17.0",
-  "description": "component-from-stream on steroids: create a React-like component from any React-compatible library, that sources its props from an observable stream and supports middleware.",
+  "version": "0.17.1",
+  "description": "lightweight (1kb gz) component-from-stream on steroids: create a React-like component from any React-compatible library, that sources its props from an observable stream and supports middleware.",
   "main": "dist/index.min.js",
   "typings": "dist/index.d.ts",
   "scripts": {
@@ -53,16 +53,17 @@
     "clipboard-copy": "^2.0.0",
     "common-shakeify": "^0.4.6",
     "http-server": "^0.11.1",
-    "inferno": "^5.0.6",
-    "inferno-create-element": "^5.0.6",
+    "inferno": "^5.3.0",
+    "inferno-create-element": "^5.3.0",
     "rimraf": "^2.6.2",
     "rx-with-event-handler": "^1.2.2",
-    "rxjs": "^6.2.0",
+    "rxjs": "^6.2.2",
     "symbol-observable": "^1.2.0",
     "tsify": "^4.0.0",
-    "tslint": "^5.10.0",
-    "typescript": "^2.9.1",
-    "uglifyify": "^5.0.0"
+    "tslint": "^5.11.0",
+    "typescript": "^3.0.1",
+    "uglify-es": "^3.3.9",
+    "uglifyify": "^5.0.1"
   },
   "dependencies": {
     "rx-subject": "^3.1.0"
