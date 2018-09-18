@@ -29,7 +29,7 @@ or [`MOST`](https://www.npmjs.com/package/most)
 # <a name="example"></a> Example: separation of view from reactive behaviour
 see the full [example](./example/index.tsx) in this directory.<br/>
 run the example in your browser locally with `npm run example`
-or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.17.1/example/index.html).
+or [online here](https://cdn.rawgit.com/ZenyWay/component-from-stream/v0.17.2/example/index.html).
 
 the [`component-from-stream` example](https://github.com/acdlite/recompose/blob/master/docs/API.md#componentfromstream)
 from `recompose` can be refactored as follows

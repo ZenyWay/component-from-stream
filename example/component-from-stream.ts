@@ -26,7 +26,7 @@ export default createComponentFromStreamFactory(Component, from)
 // helper for composing operators
 export function pipe <I,O>(...operators: Operator<any,any>[]): Operator<I,O> {
   return function (q$: Observable<I>): Observable<O> {
-    return q$.pipe(...operators)
+    return (q$.pipe as Function)(...operators)
   }
 }
 

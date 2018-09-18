@@ -214,7 +214,10 @@ export default function createComponentFromStreamFactory <C extends Component<N,
       private _q: Subject<A>
 
       private _dispatch: (v: A) => void
-      private _onProps = (props: P) => this._dispatch((<Mapper<P,A>>project)(props))
+      private _asyncDispatch =
+        (v: A): void => void Promise.resolve(v).then(this._dispatch)
+      private _onProps =
+        (props: P) => this._dispatch((<Mapper<P,A>>project)(props))
       private _setProps = (props: Readonly<Q>) => this.setState({ props })
 
       private _subs = [] as Subscription[]
@@ -232,21 +235,21 @@ export default function createComponentFromStreamFactory <C extends Component<N,
       componentDidMount() {
         const q = (this._q = createSubject())
         const source$ = fromES(q.source$)
-        const stack = [] as Subscribable<A>[]
+        const action$List = [] as Subscribable<A>[]
         const dispatch: StreamableDispatcher<A> = {
           next: q.sink.next,
-          from: Array.prototype.push.bind(stack),
+          from: Array.prototype.push.bind(action$List),
           source$
         }
+        this._dispatch = dispatch.next
         let props$: Subscribable<any> = source$
         for (const factory of factories) {
           props$ = factory(dispatch, fromES, toES)(props$)
         }
         this._subs = [toES(props$).subscribe(this._setProps)]
-        for (const dispatch$ of stack) {
-          this._subs.push(toES(dispatch$).subscribe(q.sink))
+        for (const action$ of action$List) {
+          this._subs.push(toES(action$).subscribe(this._asyncDispatch))
         }
-        this._dispatch = dispatch.next
         this._onProps(this.props)
       }
 
